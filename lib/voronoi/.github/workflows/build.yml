@@ -1,0 +1,84 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  build-linux:
+    strategy:
+      matrix:
+        feature: ["", "USE_ASAN=1"]
+        compiler: [clang]
+        arch:    ["-m64", "-m32"]
+        cversion: [c99, c11, c2x]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install
+        run: sudo apt-get install -y gcc-multilib g++-multilib
+      - name: Build tests
+        env:
+          CC: ${{ matrix.compiler }}
+          STDVERSION: ${{ matrix.cversion }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          ${{ matrix.feature }} ./scripts/compile.sh
+          (cd test && ${{ matrix.feature }} ./compile.sh)
+          (cd src/examples && ${{ matrix.feature }} ./compile.sh)
+      - name: Run Tests
+        run: |
+          ./build/test --test-filter issue28_
+          ./build/test_double --test-filter issue28_
+          ./build/simple
+
+  build-darwin:
+    strategy:
+      matrix:
+        feature: ["", "USE_ASAN=1"]
+        compiler: [clang]
+        arch:    ["-m64"]
+        cversion: [c99, c11, c2x]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build tests
+        env:
+          CC: ${{ matrix.compiler }}
+          STDVERSION: ${{ matrix.cversion }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          ${{ matrix.feature }} ./scripts/compile.sh
+          (cd test && ${{ matrix.feature }} ./compile.sh)
+          (cd src/examples && ${{ matrix.feature }} ./compile.sh)
+      - name: Run Tests
+        run: |
+          ./build/test --test-filter issue28_
+          ./build/test_double --test-filter issue28_
+          ./build/simple
+
+  build-windows:
+    strategy:
+      matrix:
+        arch:       [amd64, amd64_x86] #, amd64_arm64]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+      - name: Build main
+        run: scripts\compile_cl.bat
+      - name: Build tests
+        run: |
+          cd test
+          .\compile_cl.bat
+      - name: Build examples
+        run: |
+          cd src\examples
+          .\compile_cl.bat
+      - name: Run Tests
+        run: |
+          .\build\main.exe -?
+          .\build\main.exe -w 512 -h 512 -n 100 -o citest.png
+          .\build\test.exe
+          .\build\test_double.exe
+          .\build\simple.exe

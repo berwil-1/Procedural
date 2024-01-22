@@ -1,0 +1,149 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="template\template.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="template\world.cpp">
+      <Filter>Template</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\Imgui\imgui.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\Imgui\imgui_demo.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\Imgui\imgui_draw.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\Imgui\backends\imgui_impl_glfw.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\Imgui\backends\imgui_impl_opengl3.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\Imgui\imgui_tables.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\Imgui\imgui_widgets.cpp">
+      <Filter>Libraries\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\terrain.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="src\world\chunk.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="src\world\biome.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="template\bluenoise.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="template\common.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="template\world.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="template\precomp.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="template\worldapi.h">
+      <Filter>Template</Filter>
+    </ClInclude>
+    <ClInclude Include="cl\trace.cl">
+      <Filter>Template\cl</Filter>
+    </ClInclude>
+    <ClInclude Include="cl\tools.cl">
+      <Filter>Template\cl</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\Imgui\imconfig.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\Imgui\imgui.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\Imgui\backends\imgui_impl_glfw.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\Imgui\backends\imgui_impl_opengl3.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\Imgui\backends\imgui_impl_opengl3_loader.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\Imgui\imgui_internal.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\Imgui\imstb_truetype.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\Imgui\imstb_textedit.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\Imgui\imstb_rectpack.h">
+      <Filter>Libraries\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\voronoi\src\jc_voronoi.h">
+      <Filter>Libraries\Voronoi</Filter>
+    </ClInclude>
+    <ClInclude Include="src\terrain.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="src\world\chunk.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="src\world\biome.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\voronoi\src\jc_voronoi_clip.h">
+      <Filter>Libraries\Voronoi</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\voronoi\src\stb_image_write.h">
+      <Filter>Libraries\Voronoi</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\FastNoiseLite\include\FastNoiseLite.h">
+      <Filter>Libraries\FastNoiseLite</Filter>
+    </ClInclude>
+    <ClInclude Include="src\math\random.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="template\LICENSE">
+      <Filter>Template</Filter>
+    </None>
+    <None Include="README.md">
+      <Filter>Template</Filter>
+    </None>
+    <None Include="cl\kernels.cl">
+      <Filter>Template\cl</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Template">
+      <UniqueIdentifier>{615be237-1f28-43c4-91ca-67e6846b119e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Template\cl">
+      <UniqueIdentifier>{6b5f5adf-1d73-49e8-b751-64bfe2a917db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries">
+      <UniqueIdentifier>{d596588b-ef13-4afc-97a2-7732d3b0a50d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\ImGui">
+      <UniqueIdentifier>{952aee25-98b3-4966-8a24-6d8272d004fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\Voronoi">
+      <UniqueIdentifier>{b56f296a-e436-47fc-81e6-530621898e50}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{054a10b6-479b-4e47-8075-d8fb1bfbe7ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries\FastNoiseLite">
+      <UniqueIdentifier>{249a7b26-056a-4908-94a5-242f668569ae}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
