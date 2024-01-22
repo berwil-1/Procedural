@@ -21,6 +21,7 @@ build/
 # Roslyn cache directories
 *.ide/
 .vs/
+.vshistory/
 
 # MSTest test Results
 [Tt]est[Rr]esult*/

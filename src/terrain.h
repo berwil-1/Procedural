@@ -1,5 +1,6 @@
 #pragma once
 #include "FastNoiseLite.h"
+#include "math/random.h"
 
 namespace Tmpl8
 {
@@ -7,6 +8,19 @@ namespace Tmpl8
 	struct CameraPoint
 	{
 		float3 cameraPosition, cameraDirection;
+	};
+
+	struct Layer
+	{
+		int seed = random(),
+			noiseIndex = 0,
+			rotationIndex = 0,
+			fractalIndex = 0,
+			distanceIndex = 0,
+			returnIndex = 0,
+			domainIndex = 0;
+
+		FastNoiseLite noise;
 	};
 
 	class Terrain : public Game
@@ -63,12 +77,8 @@ namespace Tmpl8
 		int presetTest = 0, paletteTest = 0;
 		int terrainX = 512, terrainY = 32, terrainZ = 512;
 
-		FastNoiseLite elevation;
-		int elevationSeed = 1337;
-
-		FastNoiseLite temperature;
-
-		FastNoiseLite humidity;
+		Layer continentalness, erosion, peaks,
+			temperature, humidity;
 	};
 
 } // namespace Tmpl8

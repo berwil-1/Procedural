@@ -120,6 +120,59 @@ void Terrain::HandleInput(float deltaTime)
 
 void Terrain::HandleInterface()
 {
+	constexpr std::array<const char*, 6> noiseItems =
+	{
+		"OpenSimplex2",
+		"OpenSimplex2S",
+		"Cellular",
+		"Perlin",
+		"ValueCubic",
+		"Value"
+	};
+
+	constexpr std::array<const char*, 3> rotationItems =
+	{
+		"None",
+		"ImproveXYPlanes",
+		"ImproveXZPlanes"
+	};
+
+	constexpr std::array<const char*, 6> fractalItems =
+	{
+		"None",
+		"FBm",
+		"Ridged",
+		"PingPong",
+		"DomainWarpProgressive",
+		"DomainWarpIndependent"
+	};
+
+	constexpr std::array<const char*, 4> distanceItems =
+	{
+		"Euclidean",
+		"EuclideanSq",
+		"Manhattan",
+		"Hybrid"
+	};
+
+	constexpr std::array<const char*, 7> returnItems =
+	{
+		"CellValue",
+		"Distance",
+		"Distance2",
+		"Distance2Add",
+		"Distance2Sub",
+		"Distance2Mul",
+		"Distance2Div"
+	};
+
+	constexpr std::array<const char*, 3> domainItems =
+	{
+		"OpenSimplex2",
+		"OpenSimplex2Reduced",
+		"BasicGrid"
+	};
+
 	auto ParameterSlider = [this](const char* label, int& value, int min, int max)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, ImColor::HSV(0.3f, 0.6f, 0.6f).Value);
@@ -135,6 +188,24 @@ void Terrain::HandleInterface()
 		ImGui::PopStyleColor(3);
 		ImGui::SameLine();
 		dirty |= ImGui::SliderInt(label, &value, min, max);
+	};
+
+	auto LayerParameter = [this, ParameterSlider, noiseItems, rotationItems, fractalItems, distanceItems, returnItems, domainItems](Layer& layer)
+	{
+		ParameterSlider("Seed", layer.seed, -INT_MIN / 2, INT_MAX / 2);
+
+		dirty |= ImGui::Combo("Noise", &layer.noiseIndex, noiseItems.data(),
+							  static_cast<int>(noiseItems.size()));
+		dirty |= ImGui::Combo("Rotation", &layer.rotationIndex, rotationItems.data(),
+							  static_cast<int>(rotationItems.size()));
+		dirty |= ImGui::Combo("Fractal", &layer.fractalIndex, fractalItems.data(),
+							  static_cast<int>(fractalItems.size()));
+		dirty |= ImGui::Combo("Distance", &layer.distanceIndex, distanceItems.data(),
+							  static_cast<int>(distanceItems.size()));
+		dirty |= ImGui::Combo("Return", &layer.returnIndex, returnItems.data(),
+							  static_cast<int>(returnItems.size()));
+		dirty |= ImGui::Combo("Domain", &layer.domainIndex, domainItems.data(),
+							  static_cast<int>(domainItems.size()));
 	};
 
 	ImGui_ImplOpenGL3_NewFrame();
@@ -171,7 +242,24 @@ void Terrain::HandleInterface()
 
 	if (ImGui::TreeNode("Elevation"))
 	{
-		ParameterSlider("Seed", elevationSeed, -INT_MIN / 2, INT_MAX / 2);
+		if (ImGui::TreeNode("Continental"))
+		{
+			LayerParameter(continentalness);
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Erosion"))
+		{
+			ParameterSlider("Seed", erosion.seed, -INT_MIN / 2, INT_MAX / 2);
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Peaks"))
+		{
+			ParameterSlider("Seed", peaks.seed, -INT_MIN / 2, INT_MAX / 2);
+			ImGui::TreePop();
+		}
+		
 		ImGui::TreePop();
 	}
 
@@ -214,14 +302,38 @@ void Terrain::Tick(float deltaTime)
 	// Gather noise data
 	if (dirty)
 	{
-		elevation.SetSeed(elevationSeed);
+		/*elevation.SetSeed(elevationSeed);
 		elevation.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
 
 		temperature.SetSeed(elevationSeed + 1);
 		temperature.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
 
 		humidity.SetSeed(elevationSeed + 2);
-		humidity.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+		humidity.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);*/
+
+		continentalness.noise.SetSeed(continentalness.seed);
+		continentalness.noise.SetNoiseType(static_cast<FastNoiseLite::NoiseType>(continentalness.noiseIndex));
+		continentalness.noise.SetRotationType3D(static_cast<FastNoiseLite::RotationType3D>(continentalness.rotationIndex));
+		continentalness.noise.SetFractalType(static_cast<FastNoiseLite::FractalType>(continentalness.fractalIndex));
+		continentalness.noise.SetCellularDistanceFunction(static_cast<FastNoiseLite::CellularDistanceFunction>(continentalness.distanceIndex));
+		continentalness.noise.SetCellularReturnType(static_cast<FastNoiseLite::CellularReturnType>(continentalness.returnIndex));
+		continentalness.noise.SetDomainWarpType(static_cast<FastNoiseLite::DomainWarpType>(continentalness.domainIndex));
+
+		temperature.noise.SetSeed(temperature.seed);
+		temperature.noise.SetNoiseType(static_cast<FastNoiseLite::NoiseType>(temperature.noiseIndex));
+		temperature.noise.SetRotationType3D(static_cast<FastNoiseLite::RotationType3D>(temperature.rotationIndex));
+		temperature.noise.SetFractalType(static_cast<FastNoiseLite::FractalType>(temperature.fractalIndex));
+		temperature.noise.SetCellularDistanceFunction(static_cast<FastNoiseLite::CellularDistanceFunction>(temperature.distanceIndex));
+		temperature.noise.SetCellularReturnType(static_cast<FastNoiseLite::CellularReturnType>(temperature.returnIndex));
+		temperature.noise.SetDomainWarpType(static_cast<FastNoiseLite::DomainWarpType>(temperature.domainIndex));
+
+		humidity.noise.SetSeed(humidity.seed);
+		humidity.noise.SetNoiseType(static_cast<FastNoiseLite::NoiseType>(humidity.noiseIndex));
+		humidity.noise.SetRotationType3D(static_cast<FastNoiseLite::RotationType3D>(humidity.rotationIndex));
+		humidity.noise.SetFractalType(static_cast<FastNoiseLite::FractalType>(humidity.fractalIndex));
+		humidity.noise.SetCellularDistanceFunction(static_cast<FastNoiseLite::CellularDistanceFunction>(humidity.distanceIndex));
+		humidity.noise.SetCellularReturnType(static_cast<FastNoiseLite::CellularReturnType>(humidity.returnIndex));
+		humidity.noise.SetDomainWarpType(static_cast<FastNoiseLite::DomainWarpType>(humidity.domainIndex));
 
 		voxels = 0;
 		ClearWorld();
@@ -234,9 +346,10 @@ void Terrain::Tick(float deltaTime)
 				float fx = static_cast<float>(x),
 					  fz = static_cast<float>(z);
 
-				float elevationNoise = elevation.GetNoise(fx, fz);
-				float temperatureNoise = temperature.GetNoise(fx, fz);
-				float humidityNoise = humidity.GetNoise(fx, fz);
+				float elevationNoise = continentalness.noise.GetNoise(fx, fz);
+
+				float temperatureNoise = temperature.noise.GetNoise(fx, fz);
+				float humidityNoise = humidity.noise.GetNoise(fx, fz);
 
 				const Biome& biome = BiomeFunction(elevationNoise,
 					temperatureNoise, humidityNoise);
