@@ -7,6 +7,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#include <cmath>
 #include <chrono>
 
 Game* CreateGame() { return new Terrain(); }
@@ -219,7 +220,64 @@ void Terrain::HandleInterface()
 		ImGui::SameLine();
 		dirty |= ImGui::SliderFloat(label, &value, min, max);
 	};
-	auto LayerParameter = [this, ParameterSliderInt, ParameterSliderFloat,
+	auto ParameterCurveEditor = [this]()
+	{
+		struct Function
+		{
+			static float Func(void*, int i)
+			{
+				const std::vector<ImVec2> points =
+				{
+					ImVec2(0.0f, 0.0f),
+					ImVec2(0.7f, 0.3f),
+					ImVec2(0.8f, 0.9f),
+					ImVec2(1.0f, 1.0f)
+				};
+
+				const float x = i / 70.0f;
+				ImVec2 lower = ImVec2(0.0f, 0.0f),
+					upper = ImVec2(1.0f, 1.0f);
+
+				for (size_t i = 0; i < points.size() - 1; i++)
+				{
+					// Is x within bounds
+					if (x >= points[i].x && x < points[i + 1].x)
+					{
+						lower = points[i];
+						upper = points[i + 1];
+						break;
+					}
+				}
+
+				float t = (x - lower.x) / (upper.x - lower.x);
+				return std::lerp(lower.y, upper.y, t);
+			}
+		};
+
+		int display_count = 70;
+		ImVec2 cursorFirst = ImGui::GetCursorPos();
+		ImGui::PlotLines("Amplitude", Function::Func, NULL, display_count, 0, NULL, 0.0f, 1.0f, ImVec2(0, 80));
+
+		if (ImGui::IsItemHovered())
+		{
+			ImVec2 cursorSecond = ImGui::GetCursorPos();
+			ImGui::SetCursorPos(cursorFirst);
+
+			// code here
+
+			ImGui::SetCursorPos(cursorSecond);
+
+			//ImVec2 before = ImGui::GetCursorPos();
+			//ImVec2 mouse = ImGui::GetMousePos();
+			//mouse.x -= 65;
+			//mouse.y += 25;
+			//ImGui::SetCursorPos(mouse);
+			//ImGui::ImageButton();
+			//ImGui::SetCursorPos(before);
+		}
+
+	};
+	auto LayerParameter = [this, ParameterSliderInt, ParameterSliderFloat, ParameterCurveEditor,
 		noiseItems, rotationItems, fractalItems, distanceItems, returnItems, domainItems](Layer& layer)
 	{
 		ParameterSliderInt("Seed", layer.seed, -INT_MIN / 2, INT_MAX / 2);
@@ -244,6 +302,8 @@ void Terrain::HandleInterface()
 							  static_cast<int>(returnItems.size()));
 		dirty |= ImGui::Combo("Domain", &layer.domainIndex, domainItems.data(),
 							  static_cast<int>(domainItems.size()));
+
+		ParameterCurveEditor();
 	};
 
 	ImGui_ImplOpenGL3_NewFrame();
@@ -310,16 +370,6 @@ void Terrain::HandleInterface()
 	if (ImGui::TreeNode("Humidity"))
 	{
 		LayerParameter(humidity);
-		ImGui::TreePop();
-	}
-
-	if (ImGui::TreeNode("Wind"))
-	{
-		ImGui::TreePop();
-	}
-
-	if (ImGui::TreeNode("Rain"))
-	{
 		ImGui::TreePop();
 	}
 
