@@ -332,7 +332,7 @@ void ErrorCallback( int error, const char* description )
 }
 
 // Application entry point
-void main()
+int main(int argc, char* argv[])
 {
 	// open a window
 	if (!glfwInit()) FatalError( "glfwInit failed." );
@@ -1116,7 +1116,7 @@ static cl_int getPlatformID( cl_platform_id* platform )
 	clPlatformIDs = (cl_platform_id*)malloc( num_platforms * sizeof( cl_platform_id ) );
 	error = clGetPlatformIDs( num_platforms, clPlatformIDs, NULL );
 	cl_uint deviceType[2] = { CL_DEVICE_TYPE_GPU, CL_DEVICE_TYPE_CPU };
-	char* deviceOrder[2][3] = { { "NVIDIA", "AMD", "" }, { "", "", "" } };
+	const char* deviceOrder[2][3] = { { "NVIDIA", "AMD", "" }, { "", "", "" } };
 	printf( "available OpenCL platforms:\n" );
 	for (cl_uint i = 0; i < num_platforms; ++i)
 	{
@@ -1224,7 +1224,7 @@ void Buffer::Clear()
 
 // Kernel constructor
 // ----------------------------------------------------------------------------
-Kernel::Kernel( char* file, char* entryPoint )
+Kernel::Kernel( const char* file, const char* entryPoint )
 {
 	// load a cl file
 	string csText = TextFileRead( file );
@@ -1378,7 +1378,7 @@ Kernel::Kernel( char* file, char* entryPoint )
 	CHECKCL( error );
 }
 
-Kernel::Kernel( cl_program& existingProgram, char* entryPoint )
+Kernel::Kernel( cl_program& existingProgram, const char* entryPoint )
 {
 	cl_int error;
 	program = existingProgram;

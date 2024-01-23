@@ -804,26 +804,113 @@ uint SpriteManager::LoadSprite( const char* voxFile, bool largeModel )
 	return (uint)sprite.size() - 1;
 }
 
+// a helper function to load a magica voxel scene given a filename.
+const ogt_vox_scene* load_vox_scene(const char* filename, uint32_t scene_read_flags = 0)
+{
+	// open the file
+#if defined(_MSC_VER) && _MSC_VER >= 1400
+	FILE* fp;
+	if (0 != fopen_s(&fp, filename, "rb"))
+		fp = 0;
+#else
+	FILE* fp = fopen(filename, "rb");
+#endif
+	if (!fp)
+		return NULL;
+
+	// get the buffer size which matches the size of the file
+	fseek(fp, 0, SEEK_END);
+	uint32_t buffer_size = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+
+	// load the file into a memory buffer
+	uint8_t* buffer = new uint8_t[buffer_size];
+	fread(buffer, buffer_size, 1, fp);
+	fclose(fp);
+
+	// construct the scene from the buffer
+	const ogt_vox_scene* scene = ogt_vox_read_scene_with_flags(buffer, buffer_size, scene_read_flags);
+
+	// the buffer can be safely deleted once the scene is instantiated.
+	delete[] buffer;
+
+	return scene;
+}
+
+// a helper function to save a magica voxel scene to disk.
+void save_vox_scene(const char* pcFilename, const ogt_vox_scene* scene)
+{
+	// save the scene back out. 
+	uint32_t buffersize = 0;
+	uint8_t* buffer = ogt_vox_write_scene(scene, &buffersize);
+	if (!buffer)
+		return;
+
+	// open the file for write
+#if defined(_MSC_VER) && _MSC_VER >= 1400
+	FILE* fp;
+	if (0 != fopen_s(&fp, pcFilename, "wb"))
+		fp = 0;
+#else
+	FILE* fp = fopen(pcFilename, "wb");
+#endif
+	if (!fp) {
+		ogt_vox_free(buffer);
+		return;
+	}
+
+	fwrite(buffer, buffersize, 1, fp);
+	fclose(fp);
+	ogt_vox_free(buffer);
+}
+
 // SpriteManager::SaveSprite
 // ----------------------------------------------------------------------------
 void SpriteManager::SaveSprite( const uint idx, const char* vxFile )
 {
-	if (idx >= sprite.size()) return;
-	// save the sprite to custom file format
-	Sprite* s = sprite[idx];
-	gzFile f = gzopen( vxFile, "wb" );
-	int frames = (int)s->frame.size(), pls = PAYLOADSIZE;
-	gzwrite( f, &pls, 4 );
-	gzwrite( f, &frames, 4 );
-	for (int i = 0; i < frames; i++)
+	if (strstr( vxFile, ".vox" ))
 	{
-		SpriteFrame* sf = s->frame[i];
-		gzwrite( f, &sf->size, 12 );
-		gzwrite( f, &sf->drawListSize, 4 );
-		gzwrite( f, sf->drawPos, sf->drawListSize * sizeof( uint ) );
-		gzwrite( f, sf->drawVal, sf->drawListSize * PAYLOADSIZE );
+		if (idx >= sprite.size()) return;
+		// save the sprite to custom file format
+		Sprite* s = sprite[idx];
+
+		const ogt_vox_scene* scene = load_vox_scene(vxFile);
+		ogt_vox_model* model = const_cast<ogt_vox_model*>(scene->models[0]);
+		uint8_t* modifiable_voxel_data = const_cast<uint8_t*>(model->voxel_data);
+
+		for (int x = 0; x < 256; x++)
+		{
+			for (int y = 0; y < 256; y++)
+			{
+				for (int z = 0; z < 256; z++)
+				{
+					uint v = s->frame[0]->buffer[x + y * 256 + z * 256 * 256];
+					modifiable_voxel_data[x + z * 256 + y * 256 * 256] = v;
+				}
+			}
+		}
+
+		save_vox_scene(vxFile, scene);
 	}
-	gzclose( f );
+	else
+	{
+		if (idx >= sprite.size()) return;
+		// save the sprite to custom file format
+		Sprite* s = sprite[idx];
+		gzFile f = gzopen(vxFile, "wb");
+		int frames = (int)s->frame.size(), pls = PAYLOADSIZE;
+		gzwrite(f, &pls, 4);
+		gzwrite(f, &frames, 4);
+		for (int i = 0; i < frames; i++)
+		{
+			SpriteFrame* sf = s->frame[i];
+			gzwrite(f, &sf->size, 12);
+			gzwrite(f, &sf->drawListSize, 4);
+			gzwrite(f, sf->drawPos, sf->drawListSize * sizeof(uint));
+			gzwrite(f, sf->drawVal, sf->drawListSize * PAYLOADSIZE);
+		}
+		gzclose(f);
+	}
 }
 
 // SpriteManager::CloneSprite

@@ -1,6 +1,5 @@
 #pragma once
 #include "FastNoiseLite.h"
-#include "math/random.h"
 
 namespace Tmpl8
 {
@@ -12,14 +11,25 @@ namespace Tmpl8
 
 	struct Layer
 	{
-		int seed = random(),
+		int
+			seed = 1337,
 			noiseIndex = 0,
 			rotationIndex = 0,
 			fractalIndex = 0,
+			fractalOctaves = 3,
 			distanceIndex = 0,
 			returnIndex = 0,
 			domainIndex = 0;
 
+		float
+			frequency = 0.01f,
+			fractalLacunarity = 2.0f,
+			fractalGain = 0.5f,
+			fractalWeightedStrength = 0.0f,
+			fractalPingPongStrength = 2.0f,
+			cellularJitter = 1.0f,
+			domainAmplitude = 1.0f;
+			  
 		FastNoiseLite noise;
 	};
 
@@ -36,10 +46,23 @@ namespace Tmpl8
 		void Postdraw();
 		void Shutdown()
 		{
-			FILE* f = fopen("camera.dat", "wb");
+			FILE* f;
+
+			f = fopen("layers.dat", "wb");
+			fwrite(&continentalness, 1, sizeof(continentalness), f);
+			fwrite(&erosion, 1, sizeof(erosion), f);
+			fwrite(&peaks, 1, sizeof(peaks), f);
+			fwrite(&temperature, 1, sizeof(temperature), f);
+			fwrite(&humidity, 1, sizeof(humidity), f);
+			fclose(f);
+
+			f = fopen("camera.dat", "wb");
 			fwrite(&cameraDirection, 1, sizeof(cameraDirection), f);
 			fwrite(&cameraPosition, 1, sizeof(cameraPosition), f);
 			fclose(f);
+
+			// uint sprite = CreateSprite(0, 0, 0, 256, 256, 256);
+			// SaveSprite(sprite, "world.vox");
 		}
 
 		// Input handling

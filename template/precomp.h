@@ -1077,8 +1077,8 @@ class Kernel
 	friend class Buffer;
 public:
 	// constructor / destructor
-	Kernel( char* file, char* entryPoint );
-	Kernel( cl_program& existingProgram, char* entryPoint );
+	Kernel( const char* file, const char* entryPoint );
+	Kernel( cl_program& existingProgram, const char* entryPoint );
 	~Kernel();
 	// get / set
 	cl_kernel& GetKernel() { return kernel; }

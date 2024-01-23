@@ -17,7 +17,8 @@ void Terrain::Init()
 	skyDomeImage = "assets/sky.hdr";
 
 	// Restore camera, if possible
-	FILE* f = fopen("camera.dat", "rb");
+	FILE* f;
+	f = fopen("camera.dat", "rb");
 	if (f)
 	{
 		fread(&cameraDirection, 1, sizeof(cameraDirection), f);
@@ -25,10 +26,21 @@ void Terrain::Init()
 		fclose(f);
 	}
 
+	f = fopen("layers.dat", "rb");
+	if (f)
+	{
+		fread(&continentalness, 1, sizeof(continentalness), f);
+		fread(&erosion, 1, sizeof(erosion), f);
+		fread(&peaks, 1, sizeof(peaks), f);
+		fread(&temperature, 1, sizeof(temperature), f);
+		fread(&humidity, 1, sizeof(humidity), f);
+		fclose(f);
+	}
+
 	// Load spline path
 	CameraPoint p;
 	FILE* fp = fopen("assets/splinepath.bin", "rb");
-	while (1)
+	while (true)
 	{
 		fread(&p.cameraPosition, 1, sizeof(p.cameraPosition), fp);
 		size_t s = fread(&p.cameraDirection, 1, sizeof(p.cameraDirection), fp);
@@ -173,7 +185,7 @@ void Terrain::HandleInterface()
 		"BasicGrid"
 	};
 
-	auto ParameterSlider = [this](const char* label, int& value, int min, int max)
+	auto ParameterSliderInt = [this](const char* label, int& value, int min, int max)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, ImColor::HSV(0.3f, 0.6f, 0.6f).Value);
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColor::HSV(0.3f, 0.7f, 0.7f).Value);
@@ -189,10 +201,36 @@ void Terrain::HandleInterface()
 		ImGui::SameLine();
 		dirty |= ImGui::SliderInt(label, &value, min, max);
 	};
-
-	auto LayerParameter = [this, ParameterSlider, noiseItems, rotationItems, fractalItems, distanceItems, returnItems, domainItems](Layer& layer)
+	auto ParameterSliderFloat = [this](const char* label, float& value, float min, float max)
 	{
-		ParameterSlider("Seed", layer.seed, -INT_MIN / 2, INT_MAX / 2);
+		ImGui::PushStyleColor(ImGuiCol_Button, ImColor::HSV(0.3f, 0.6f, 0.6f).Value);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColor::HSV(0.3f, 0.7f, 0.7f).Value);
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColor::HSV(0.3f, 0.8f, 0.8f).Value);
+
+		if (ImGui::Button("Random"))
+		{
+			int x = random();
+			value = x - max *
+				static_cast<int>(x / max); // x % max;
+			dirty = true;
+		}
+
+		ImGui::PopStyleColor(3);
+		ImGui::SameLine();
+		dirty |= ImGui::SliderFloat(label, &value, min, max);
+	};
+	auto LayerParameter = [this, ParameterSliderInt, ParameterSliderFloat,
+		noiseItems, rotationItems, fractalItems, distanceItems, returnItems, domainItems](Layer& layer)
+	{
+		ParameterSliderInt("Seed", layer.seed, -INT_MIN / 2, INT_MAX / 2);
+		ParameterSliderFloat("Frequency", layer.frequency, 0, 128.0f);
+		ParameterSliderInt("Fractal Octaves", layer.fractalOctaves, 0, 8);
+		ParameterSliderFloat("Fractal Lacunarity", layer.fractalLacunarity, 0.0f, 16.0f);
+		ParameterSliderFloat("Fractal Gain", layer.fractalGain, 0.0f, 4.0f);
+		ParameterSliderFloat("Fractal Weighted Strength", layer.fractalWeightedStrength, 0.0f, 1.0f);
+		ParameterSliderFloat("Fractal Ping Pong Strength", layer.fractalPingPongStrength, 0.0f, 16.0f);
+		ParameterSliderFloat("Cellular Jitter", layer.cellularJitter, 0.0f, 1.0f);
+		ParameterSliderFloat("Domain Warp Amplitude", layer.domainAmplitude, 0.0f, 8.0f);
 
 		dirty |= ImGui::Combo("Noise", &layer.noiseIndex, noiseItems.data(),
 							  static_cast<int>(noiseItems.size()));
@@ -231,9 +269,9 @@ void Terrain::HandleInterface()
 	ImGui::NewLine();
 
 	ImGui::SeparatorText("Terrain");
-	ParameterSlider("Terrain X", terrainX, 1, 1024);
-	ParameterSlider("Terrain Y", terrainY, 1, 128);
-	ParameterSlider("Terrain Z", terrainZ, 1, 1024);
+	ParameterSliderInt("Terrain X", terrainX, 1, 1024);
+	ParameterSliderInt("Terrain Y", terrainY, 1, 128);
+	ParameterSliderInt("Terrain Z", terrainZ, 1, 1024);
 
 	if (ImGui::TreeNode("Biome"))
 	{
@@ -250,13 +288,13 @@ void Terrain::HandleInterface()
 
 		if (ImGui::TreeNode("Erosion"))
 		{
-			ParameterSlider("Seed", erosion.seed, -INT_MIN / 2, INT_MAX / 2);
+			LayerParameter(erosion);
 			ImGui::TreePop();
 		}
 
 		if (ImGui::TreeNode("Peaks"))
 		{
-			ParameterSlider("Seed", peaks.seed, -INT_MIN / 2, INT_MAX / 2);
+			LayerParameter(peaks);
 			ImGui::TreePop();
 		}
 		
@@ -265,11 +303,13 @@ void Terrain::HandleInterface()
 
 	if (ImGui::TreeNode("Temperature"))
 	{
+		LayerParameter(temperature);
 		ImGui::TreePop();
 	}
 
 	if (ImGui::TreeNode("Humidity"))
 	{
+		LayerParameter(humidity);
 		ImGui::TreePop();
 	}
 
@@ -291,49 +331,41 @@ void Terrain::Tick(float deltaTime)
 {
 	static size_t ticks = 0;
 
+	auto SetParameters = [this](Layer& layer)
+	{
+		layer.noise.SetSeed(layer.seed);
+		layer.noise.SetFrequency(layer.frequency);
+		layer.noise.SetNoiseType(static_cast<FastNoiseLite::NoiseType>(layer.noiseIndex));
+		layer.noise.SetRotationType3D(static_cast<FastNoiseLite::RotationType3D>(layer.rotationIndex));
+		layer.noise.SetFractalType(static_cast<FastNoiseLite::FractalType>(layer.fractalIndex));
+		layer.noise.SetFractalOctaves(layer.fractalOctaves);
+		layer.noise.SetFractalLacunarity(layer.fractalLacunarity);
+		layer.noise.SetFractalGain(layer.fractalGain);
+		layer.noise.SetFractalWeightedStrength(layer.fractalWeightedStrength);
+		layer.noise.SetFractalPingPongStrength(layer.fractalPingPongStrength);
+		layer.noise.SetCellularDistanceFunction(static_cast<FastNoiseLite::CellularDistanceFunction>(layer.distanceIndex));
+		layer.noise.SetCellularReturnType(static_cast<FastNoiseLite::CellularReturnType>(layer.returnIndex));
+		layer.noise.SetCellularJitter(layer.cellularJitter);
+		layer.noise.SetDomainWarpType(static_cast<FastNoiseLite::DomainWarpType>(layer.domainIndex));
+		layer.noise.SetDomainWarpAmp(layer.domainAmplitude);
+	};
+
 	HandleInput(deltaTime);
 
 	// 
-	// TODO: move towards a pipeline arcitecture,
-	// eg. allocate volume, 2d layer generator (take in previous layers),
-	// produce biomes from biome function, use biome to 
+	//  TODO: move towards a pipeline arcitecture,
+	//  eg. allocate volume, 2d layer generator (take in previous layers),
+	//  produce biomes from biome function, use biome to 
 	// 
 
 	// Gather noise data
 	if (dirty)
 	{
-		/*elevation.SetSeed(elevationSeed);
-		elevation.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-
-		temperature.SetSeed(elevationSeed + 1);
-		temperature.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-
-		humidity.SetSeed(elevationSeed + 2);
-		humidity.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);*/
-
-		continentalness.noise.SetSeed(continentalness.seed);
-		continentalness.noise.SetNoiseType(static_cast<FastNoiseLite::NoiseType>(continentalness.noiseIndex));
-		continentalness.noise.SetRotationType3D(static_cast<FastNoiseLite::RotationType3D>(continentalness.rotationIndex));
-		continentalness.noise.SetFractalType(static_cast<FastNoiseLite::FractalType>(continentalness.fractalIndex));
-		continentalness.noise.SetCellularDistanceFunction(static_cast<FastNoiseLite::CellularDistanceFunction>(continentalness.distanceIndex));
-		continentalness.noise.SetCellularReturnType(static_cast<FastNoiseLite::CellularReturnType>(continentalness.returnIndex));
-		continentalness.noise.SetDomainWarpType(static_cast<FastNoiseLite::DomainWarpType>(continentalness.domainIndex));
-
-		temperature.noise.SetSeed(temperature.seed);
-		temperature.noise.SetNoiseType(static_cast<FastNoiseLite::NoiseType>(temperature.noiseIndex));
-		temperature.noise.SetRotationType3D(static_cast<FastNoiseLite::RotationType3D>(temperature.rotationIndex));
-		temperature.noise.SetFractalType(static_cast<FastNoiseLite::FractalType>(temperature.fractalIndex));
-		temperature.noise.SetCellularDistanceFunction(static_cast<FastNoiseLite::CellularDistanceFunction>(temperature.distanceIndex));
-		temperature.noise.SetCellularReturnType(static_cast<FastNoiseLite::CellularReturnType>(temperature.returnIndex));
-		temperature.noise.SetDomainWarpType(static_cast<FastNoiseLite::DomainWarpType>(temperature.domainIndex));
-
-		humidity.noise.SetSeed(humidity.seed);
-		humidity.noise.SetNoiseType(static_cast<FastNoiseLite::NoiseType>(humidity.noiseIndex));
-		humidity.noise.SetRotationType3D(static_cast<FastNoiseLite::RotationType3D>(humidity.rotationIndex));
-		humidity.noise.SetFractalType(static_cast<FastNoiseLite::FractalType>(humidity.fractalIndex));
-		humidity.noise.SetCellularDistanceFunction(static_cast<FastNoiseLite::CellularDistanceFunction>(humidity.distanceIndex));
-		humidity.noise.SetCellularReturnType(static_cast<FastNoiseLite::CellularReturnType>(humidity.returnIndex));
-		humidity.noise.SetDomainWarpType(static_cast<FastNoiseLite::DomainWarpType>(humidity.domainIndex));
+		SetParameters(continentalness);
+		SetParameters(erosion);
+		SetParameters(peaks);
+		SetParameters(temperature);
+		SetParameters(humidity);
 
 		voxels = 0;
 		ClearWorld();
@@ -344,12 +376,21 @@ void Terrain::Tick(float deltaTime)
 			for (int z = 0; z < terrainZ; z++)
 			{
 				float fx = static_cast<float>(x),
-					  fz = static_cast<float>(z);
+					fz = static_cast<float>(z);
 
-				float elevationNoise = continentalness.noise.GetNoise(fx, fz);
+				float continentalnessNoise =
+					continentalness.noise.GetNoise(fx, fz);
+				float erosionNoise =
+					erosion.noise.GetNoise(fx, fz);
+				float peaksNoise =
+					peaks.noise.GetNoise(fx, fz);
 
-				float temperatureNoise = temperature.noise.GetNoise(fx, fz);
-				float humidityNoise = humidity.noise.GetNoise(fx, fz);
+				float elevationNoise = continentalnessNoise +
+					erosionNoise + peaksNoise;
+				float temperatureNoise =
+					temperature.noise.GetNoise(fx, fz);
+				float humidityNoise =
+					humidity.noise.GetNoise(fx, fz);
 
 				const Biome& biome = BiomeFunction(elevationNoise,
 					temperatureNoise, humidityNoise);
@@ -358,43 +399,35 @@ void Terrain::Tick(float deltaTime)
 				{
 					if (y < (dimension ? terrainY : 1))
 					{
-						size_t paletteIndex = 0;
+						size_t paletteIndex = urandom() % 8;
 						std::array<uint, 8> palette = paletteTest ?
 							biomes[paletteTest - 1].surface[0] : biome.surface[0];
-
-						switch (presetTest)
+						const std::array<float, 5> presetNoise =
 						{
-							case 0:
-							{
-								paletteIndex = urandom() % 8;
-								break;
-							}
+							continentalnessNoise, erosionNoise, peaksNoise, 
+							temperatureNoise, humidityNoise
+						};
 
-							case 1:
-							{
-								paletteIndex = static_cast<size_t>(
-									(elevationNoise + 1.0f) * 4.0f);
-								palette = PALETTE_GRAY;
-								break;
-							}
-
-							case 2:
-							{
-								paletteIndex = urandom() % 8;
-								break;
-							}
+						if (presetTest)
+						{
+							paletteIndex = static_cast<size_t>
+								((presetNoise[presetTest - 1] + 1.0f) * 4.0f);
+							palette = PALETTE_GRAY;
 						}
 
-						Plot(x, y, z, palette[paletteIndex]);
+						if (y < (elevationNoise + 1.0f) * 16.0f)
+						{
+							Plot(x, y, z, palette[paletteIndex]);
+						}
 						voxels++;
 					}
 				}
 			}
 		}
 
-		auto end = std::chrono::system_clock::now();
-		auto elapsed = std::chrono::duration_cast<
-			std::chrono::milliseconds>(end - start);
+		using namespace std::chrono;
+		auto end = system_clock::now();
+		auto elapsed = duration_cast<milliseconds>(end - start);
 		delay = elapsed.count();
 		dirty = false;
 	}
