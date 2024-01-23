@@ -223,12 +223,12 @@ void Terrain::HandleInterface()
 		noiseItems, rotationItems, fractalItems, distanceItems, returnItems, domainItems](Layer& layer)
 	{
 		ParameterSliderInt("Seed", layer.seed, -INT_MIN / 2, INT_MAX / 2);
-		ParameterSliderFloat("Frequency", layer.frequency, 0, 128.0f);
+		ParameterSliderFloat("Frequency", layer.frequency, 0, 1.0f);
 		ParameterSliderInt("Fractal Octaves", layer.fractalOctaves, 0, 8);
-		ParameterSliderFloat("Fractal Lacunarity", layer.fractalLacunarity, 0.0f, 16.0f);
+		ParameterSliderFloat("Fractal Lacunarity", layer.fractalLacunarity, 0.0f, 8.0f);
 		ParameterSliderFloat("Fractal Gain", layer.fractalGain, 0.0f, 4.0f);
 		ParameterSliderFloat("Fractal Weighted Strength", layer.fractalWeightedStrength, 0.0f, 1.0f);
-		ParameterSliderFloat("Fractal Ping Pong Strength", layer.fractalPingPongStrength, 0.0f, 16.0f);
+		ParameterSliderFloat("Fractal Ping Pong Strength", layer.fractalPingPongStrength, 0.0f, 8.0f);
 		ParameterSliderFloat("Cellular Jitter", layer.cellularJitter, 0.0f, 1.0f);
 		ParameterSliderFloat("Domain Warp Amplitude", layer.domainAmplitude, 0.0f, 8.0f);
 
@@ -253,7 +253,7 @@ void Terrain::HandleInterface()
 	ImGui::Text("Voxels (%.2f mv)		Delay (%lld ms)", voxels / 1000000.0f, delay);
 
 	std::vector<const char*> items;
-	items = { "All", "Continentalness", "Erosion", "Peaks", "Temperature", "Humidity", "Wind", "Rain" };
+	items = { "All", "Continentalness", "Erosion", "Peaks", "Temperature", "Humidity" };
 	dirty |= ImGui::Combo("Preset", &presetTest, items.data(),
 		static_cast<int>(items.size()));
 
@@ -415,7 +415,7 @@ void Terrain::Tick(float deltaTime)
 							palette = PALETTE_GRAY;
 						}
 
-						if (y < (elevationNoise + 1.0f) * 16.0f)
+						//if (y < (elevationNoise + 1.0f) * 16.0f)
 						{
 							Plot(x, y, z, palette[paletteIndex]);
 						}
