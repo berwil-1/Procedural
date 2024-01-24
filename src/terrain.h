@@ -1,5 +1,6 @@
 #pragma once
 #include "FastNoiseLite.h"
+#include "lib/imgui/imgui.h"
 
 namespace Tmpl8
 {
@@ -29,6 +30,37 @@ namespace Tmpl8
 			fractalPingPongStrength = 2.0f,
 			cellularJitter = 1.0f,
 			domainAmplitude = 1.0f;
+
+
+		std::vector<float> points =
+		{
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f
+		};
+
+		/*std::vector<ImVec2> points =
+		{
+			ImVec2(0.0f, 0.5f),
+			ImVec2(0.1f, 0.5f),
+			ImVec2(0.2f, 0.5f),
+			ImVec2(0.3f, 0.5f),
+			ImVec2(0.4f, 0.5f),
+			ImVec2(0.5f, 0.5f),
+			ImVec2(0.6f, 0.5f),
+			ImVec2(0.7f, 0.5f),
+			ImVec2(0.8f, 0.5f),
+			ImVec2(0.9f, 0.5f),
+			ImVec2(1.0f, 0.5f)
+		};*/
 			  
 		FastNoiseLite noise;
 	};
@@ -42,28 +74,9 @@ namespace Tmpl8
 		void HandleInput(float deltaTime);
 		void HandleInterface();
 		void Tick(float deltaTime);
-		void Predraw() {};
+		void Predraw();
 		void Postdraw();
-		void Shutdown()
-		{
-			FILE* f;
-
-			f = fopen("layers.dat", "wb");
-			fwrite(&continentalness, 1, sizeof(continentalness), f);
-			fwrite(&erosion, 1, sizeof(erosion), f);
-			fwrite(&peaks, 1, sizeof(peaks), f);
-			fwrite(&temperature, 1, sizeof(temperature), f);
-			fwrite(&humidity, 1, sizeof(humidity), f);
-			fclose(f);
-
-			f = fopen("camera.dat", "wb");
-			fwrite(&cameraDirection, 1, sizeof(cameraDirection), f);
-			fwrite(&cameraPosition, 1, sizeof(cameraPosition), f);
-			fclose(f);
-
-			// uint sprite = CreateSprite(0, 0, 0, 256, 256, 256);
-			// SaveSprite(sprite, "world.vox");
-		}
+		void Shutdown();
 
 		// Input handling
 		void MouseUp(int button) { /* implement if you want to detect mouse button presses */ }
@@ -98,7 +111,8 @@ namespace Tmpl8
 		bool dirty = true;
 		int dimension = 0; // 0 = 2d, 1 = 3d
 		int presetTest = 0, paletteTest = 0;
-		int terrainX = 512, terrainY = 32, terrainZ = 512;
+		//int terrainX = 512, terrainY = 32, terrainZ = 512;
+		int terrainX = 512, terrainZ = 512;
 
 		Layer continentalness, erosion, peaks,
 			temperature, humidity;

@@ -220,50 +220,95 @@ void Terrain::HandleInterface()
 		ImGui::SameLine();
 		dirty |= ImGui::SliderFloat(label, &value, min, max);
 	};
-	auto ParameterCurveEditor = [this]()
+	auto ParameterCurveEditor = [this](Layer& layer)
 	{
-		struct Function
-		{
-			static float Func(void*, int i)
-			{
-				const std::vector<ImVec2> points =
-				{
-					ImVec2(0.0f, 0.0f),
-					ImVec2(0.7f, 0.3f),
-					ImVec2(0.8f, 0.9f),
-					ImVec2(1.0f, 1.0f)
-				};
-
-				const float x = i / 70.0f;
-				ImVec2 lower = ImVec2(0.0f, 0.0f),
-					upper = ImVec2(1.0f, 1.0f);
-
-				for (size_t i = 0; i < points.size() - 1; i++)
-				{
-					// Is x within bounds
-					if (x >= points[i].x && x < points[i + 1].x)
-					{
-						lower = points[i];
-						upper = points[i + 1];
-						break;
-					}
-				}
-
-				float t = (x - lower.x) / (upper.x - lower.x);
-				return std::lerp(lower.y, upper.y, t);
-			}
-		};
-
-		int display_count = 70;
+		int count = 70;
 		ImVec2 cursorFirst = ImGui::GetCursorPos();
-		ImGui::PlotLines("Amplitude", Function::Func, NULL, display_count, 0, NULL, 0.0f, 1.0f, ImVec2(0, 80));
+		ImVec2 cursorFirstScreen = ImGui::GetCursorScreenPos();
+
+		/*auto lines = [](void*, int i) -> float
+		{
+			static std::vector<ImVec2> cap = layer.;
+
+			const float x = i / 70.0f;
+			ImVec2 lower = ImVec2(0.0f, 0.0f),
+				upper = ImVec2(1.0f, 1.0f);
+
+			for (size_t i = 0; i < points.size() - 1; i++)
+			{
+				// Is x within bounds
+				if (x >= points[i].x && x < points[i + 1].x)
+				{
+					lower = points[i];
+					upper = points[i + 1];
+					break;
+				}
+			}
+
+			float t = (x - lower.x) / (upper.x - lower.x);
+			return std::lerp(lower.y, upper.y, t);
+		};*/
+
+		//ImGui::PlotLines("Amplitude", lines, NULL, count, 0, NULL, 0.0f, 1.0f, ImVec2(0, 80));
+
+		ImGui::PlotLines("Amplitude", layer.points.data(), 10, 0, NULL, 0.0f, 1.0f, ImVec2(0, 80));
 
 		if (ImGui::IsItemHovered())
 		{
 			ImVec2 cursorSecond = ImGui::GetCursorPos();
 			ImGui::SetCursorPos(cursorFirst);
 
-			// code here
+			static size_t held = -1;
+
+			if (held == -1 && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+			{
+				size_t newIndex = -1;
+				float newLength = FLT_MAX;
+
+				for(size_t index = 0; index < layer.points.size(); index++)
+				{
+					const float point = layer.points[index];
+					ImVec2 mouse = ImGui::GetMousePos();
+					ImVec2 relative = ImVec2((mouse.x - cursorFirstScreen.x) / (ImGui::GetItemRectSize().x - ImGui::CalcTextSize("Amplitude").x),
+						(mouse.y - cursorFirstScreen.y) / ImGui::GetItemRectSize().y);
+					ImVec2 difference = ImVec2(relative.x - (index / 10.0f), (1.0f - relative.y) - point);
+					float length = difference.x * difference.x + difference.y * difference.y;
+
+					if (length < newLength)
+					{
+						newIndex = index;
+						newLength = length;
+					}
+				}
+
+				if (newLength < 0.05f)
+				{
+					held = newIndex;
+				}
+			}
+
+			if (held != -1)
+			{
+				ImVec2 mouse = ImGui::GetMousePos();
+				ImVec2 relative = ImVec2((mouse.x - cursorFirstScreen.x) / (ImGui::GetItemRectSize().x - ImGui::CalcTextSize("Amplitude").x),
+					(mouse.y - cursorFirstScreen.y) / ImGui::GetItemRectSize().y);
+				layer.points[held] = 1.0f - relative.y;
+				
+				/*if (held == 0 || held == layer.points.size() - 1)
+				{
+					points[held] = 1.0f - relative.y;
+				}
+				else
+				{
+					points[held] = ImVec2(relative.x, 1.0f - relative.y);
+				}*/
+			}
+
+			if (held != -1 && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			{
+				held = -1;
+				dirty = true;
+			}
 
 			ImGui::SetCursorPos(cursorSecond);
 
@@ -303,7 +348,7 @@ void Terrain::HandleInterface()
 		dirty |= ImGui::Combo("Domain", &layer.domainIndex, domainItems.data(),
 							  static_cast<int>(domainItems.size()));
 
-		ParameterCurveEditor();
+		ParameterCurveEditor(layer);
 	};
 
 	ImGui_ImplOpenGL3_NewFrame();
@@ -330,7 +375,7 @@ void Terrain::HandleInterface()
 
 	ImGui::SeparatorText("Terrain");
 	ParameterSliderInt("Terrain X", terrainX, 1, 1024);
-	ParameterSliderInt("Terrain Y", terrainY, 1, 128);
+	//ParameterSliderInt("Terrain Y", terrainY, 1, 128);
 	ParameterSliderInt("Terrain Z", terrainZ, 1, 1024);
 
 	if (ImGui::TreeNode("Biome"))
@@ -399,6 +444,25 @@ void Terrain::Tick(float deltaTime)
 		layer.noise.SetDomainWarpType(static_cast<FastNoiseLite::DomainWarpType>(layer.domainIndex));
 		layer.noise.SetDomainWarpAmp(layer.domainAmplitude);
 	};
+	auto LerpPoints = [](Layer& layer, float x) -> float
+	{
+		std::vector<float>& points = layer.points;
+		size_t lower = 0, upper = 10;
+
+		for (size_t i = 0; i < points.size() - 1; i++)
+		{
+			// Is x within bounds
+			if (x >= (i / 10.0f) && x < (i + 1) / 10.0f)
+			{
+				lower = i;
+				upper = i + 1;
+				break;
+			}
+		}
+
+		float t = (x - (lower / 10.0f)) / ((upper / 10.0f) - (lower / 10.0f));
+		return std::lerp(points[lower], points[upper], t);
+	};
 
 	HandleInput(deltaTime);
 
@@ -429,23 +493,31 @@ void Terrain::Tick(float deltaTime)
 					fz = static_cast<float>(z);
 
 				float continentalnessNoise =
-					continentalness.noise.GetNoise(fx, fz);
+					LerpPoints(continentalness, (continentalness.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * continentalness.noise.GetNoise(fx, fz);
 				float erosionNoise =
-					erosion.noise.GetNoise(fx, fz);
+					LerpPoints(erosion, (erosion.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * erosion.noise.GetNoise(fx, fz);
 				float peaksNoise =
-					peaks.noise.GetNoise(fx, fz);
+					LerpPoints(peaks, (peaks.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peaks.noise.GetNoise(fx, fz);
 
-				float elevationNoise = continentalnessNoise +
-					erosionNoise + peaksNoise;
+				float elevationNoise = (continentalnessNoise * 50.0f +
+					erosionNoise * 20.0f + peaksNoise * 10.0f + 80.0f) / 2.0f;
 				float temperatureNoise =
 					temperature.noise.GetNoise(fx, fz);
 				float humidityNoise =
 					humidity.noise.GetNoise(fx, fz);
 
-				const Biome& biome = BiomeFunction(elevationNoise,
+				const Biome& biome = BiomeFunction(elevationNoise / 80.0f,
 					temperatureNoise, humidityNoise);
 
-				for (int y = 0; y < terrainY; y++)
+				for (int y = 0; y < elevationNoise; y++)
+				{
+					//if (y < )
+					{
+						Plot(x, y, z, PALETTE_GRAY[(int)min(floor(y / 10.0f), 7.0f)]);
+					}
+				}
+
+				/*for (int y = 0; y < terrainY; y++)
 				{
 					if (y < (dimension ? terrainY : 1))
 					{
@@ -461,17 +533,17 @@ void Terrain::Tick(float deltaTime)
 						if (presetTest)
 						{
 							paletteIndex = static_cast<size_t>
-								((presetNoise[presetTest - 1] + 1.0f) * 4.0f);
+								((presetNoise[presetTest - 1] + 0.99f) * 4.0f);
 							palette = PALETTE_GRAY;
 						}
 
-						//if (y < (elevationNoise + 1.0f) * 16.0f)
+						if (y < (elevationNoise / 3.0f + 1.0f) * 32.0f)
 						{
 							Plot(x, y, z, palette[paletteIndex]);
 						}
 						voxels++;
 					}
-				}
+				}*/
 			}
 		}
 
@@ -485,7 +557,33 @@ void Terrain::Tick(float deltaTime)
 	ticks++;
 }
 
+void Tmpl8::Terrain::Predraw()
+{
+	// Empty
+}
+
 void Terrain::Postdraw()
 {
 	HandleInterface();
+}
+
+void Tmpl8::Terrain::Shutdown()
+{
+	FILE* f;
+
+	f = fopen("layers.dat", "wb");
+	fwrite(&continentalness, 1, sizeof(continentalness), f);
+	fwrite(&erosion, 1, sizeof(erosion), f);
+	fwrite(&peaks, 1, sizeof(peaks), f);
+	fwrite(&temperature, 1, sizeof(temperature), f);
+	fwrite(&humidity, 1, sizeof(humidity), f);
+	fclose(f);
+
+	f = fopen("camera.dat", "wb");
+	fwrite(&cameraDirection, 1, sizeof(cameraDirection), f);
+	fwrite(&cameraPosition, 1, sizeof(cameraPosition), f);
+	fclose(f);
+
+	// uint sprite = CreateSprite(0, 0, 0, 256, 256, 256);
+	// SaveSprite(sprite, "world.vox");
 }
