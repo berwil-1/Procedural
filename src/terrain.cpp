@@ -447,7 +447,7 @@ void Terrain::Tick(float deltaTime)
 	auto LerpPoints = [](Layer& layer, float x) -> float
 	{
 		std::vector<float>& points = layer.points;
-		size_t lower = 0, upper = 10;
+		size_t lower = 0, upper = 9;
 
 		for (size_t i = 0; i < points.size() - 1; i++)
 		{
@@ -494,9 +494,9 @@ void Terrain::Tick(float deltaTime)
 
 				float continentalnessNoise =
 					LerpPoints(continentalness, (continentalness.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * continentalness.noise.GetNoise(fx, fz);
-				float erosionNoise =
+				float erosionNoise = erosion.noise.GetNoise(fx, fz);
 					LerpPoints(erosion, (erosion.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * erosion.noise.GetNoise(fx, fz);
-				float peaksNoise =
+				float peaksNoise = peaks.noise.GetNoise(fx, fz);
 					LerpPoints(peaks, (peaks.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peaks.noise.GetNoise(fx, fz);
 
 				float elevationNoise = (continentalnessNoise * 50.0f +
@@ -511,10 +511,7 @@ void Terrain::Tick(float deltaTime)
 
 				for (int y = 0; y < elevationNoise; y++)
 				{
-					//if (y < )
-					{
-						Plot(x, y, z, PALETTE_GRAY[(int)min(floor(y / 10.0f), 7.0f)]);
-					}
+					Plot(x, y, z, PALETTE_GRAY[(int)min(floor(y / 10.0f), 7.0f)]);
 				}
 
 				/*for (int y = 0; y < terrainY; y++)
