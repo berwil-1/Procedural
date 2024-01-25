@@ -200,7 +200,8 @@ void Terrain::HandleInterface()
 
 		ImGui::PopStyleColor(3);
 		ImGui::SameLine();
-		dirty |= ImGui::SliderInt(label, &value, min, max);
+		ImGui::SliderInt(label, &value, min, max);
+		dirty |= ImGui::IsItemDeactivatedAfterEdit();
 	};
 	auto ParameterSliderFloat = [this](const char* label, float& value, float min, float max)
 	{
@@ -211,14 +212,14 @@ void Terrain::HandleInterface()
 		if (ImGui::Button("Random"))
 		{
 			int x = random();
-			value = x - max *
-				static_cast<int>(x / max); // x % max;
+			value = x - max * static_cast<int>(x / max); // x % max;
 			dirty = true;
 		}
 
 		ImGui::PopStyleColor(3);
 		ImGui::SameLine();
-		dirty |= ImGui::SliderFloat(label, &value, min, max);
+		ImGui::SliderFloat(label, &value, min, max);
+		dirty |= ImGui::IsItemDeactivatedAfterEdit();
 	};
 	auto ParameterCurveEditor = [this](Layer& layer)
 	{
@@ -226,101 +227,60 @@ void Terrain::HandleInterface()
 		ImVec2 cursorFirst = ImGui::GetCursorPos();
 		ImVec2 cursorFirstScreen = ImGui::GetCursorScreenPos();
 
-		/*auto lines = [](void*, int i) -> float
-		{
-			static std::vector<ImVec2> cap = layer.;
-
-			const float x = i / 70.0f;
-			ImVec2 lower = ImVec2(0.0f, 0.0f),
-				upper = ImVec2(1.0f, 1.0f);
-
-			for (size_t i = 0; i < points.size() - 1; i++)
-			{
-				// Is x within bounds
-				if (x >= points[i].x && x < points[i + 1].x)
-				{
-					lower = points[i];
-					upper = points[i + 1];
-					break;
-				}
-			}
-
-			float t = (x - lower.x) / (upper.x - lower.x);
-			return std::lerp(lower.y, upper.y, t);
-		};*/
-
-		//ImGui::PlotLines("Amplitude", lines, NULL, count, 0, NULL, 0.0f, 1.0f, ImVec2(0, 80));
-
 		ImGui::PlotLines("Amplitude", layer.points.data(), 10, 0, NULL, 0.0f, 1.0f, ImVec2(0, 80));
+		ImVec2 cursorSecond = ImGui::GetCursorPos();
+		ImGui::SetCursorPos(cursorFirst);
 
-		if (ImGui::IsItemHovered())
+		static size_t held = -1;
+
+		if (held == -1 && ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsItemHovered())
 		{
-			ImVec2 cursorSecond = ImGui::GetCursorPos();
-			ImGui::SetCursorPos(cursorFirst);
+			size_t newIndex = -1;
+			float newLength = FLT_MAX;
 
-			static size_t held = -1;
-
-			if (held == -1 && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+			for(size_t index = 0; index < layer.points.size(); index++)
 			{
-				size_t newIndex = -1;
-				float newLength = FLT_MAX;
-
-				for(size_t index = 0; index < layer.points.size(); index++)
-				{
-					const float point = layer.points[index];
-					ImVec2 mouse = ImGui::GetMousePos();
-					ImVec2 relative = ImVec2((mouse.x - cursorFirstScreen.x) / (ImGui::GetItemRectSize().x - ImGui::CalcTextSize("Amplitude").x),
-						(mouse.y - cursorFirstScreen.y) / ImGui::GetItemRectSize().y);
-					ImVec2 difference = ImVec2(relative.x - (index / 10.0f), (1.0f - relative.y) - point);
-					float length = difference.x * difference.x + difference.y * difference.y;
-
-					if (length < newLength)
-					{
-						newIndex = index;
-						newLength = length;
-					}
-				}
-
-				if (newLength < 0.05f)
-				{
-					held = newIndex;
-				}
-			}
-
-			if (held != -1)
-			{
+				const float point = layer.points[index];
 				ImVec2 mouse = ImGui::GetMousePos();
-				ImVec2 relative = ImVec2((mouse.x - cursorFirstScreen.x) / (ImGui::GetItemRectSize().x - ImGui::CalcTextSize("Amplitude").x),
-					(mouse.y - cursorFirstScreen.y) / ImGui::GetItemRectSize().y);
-				layer.points[held] = 1.0f - relative.y;
-				
-				/*if (held == 0 || held == layer.points.size() - 1)
+				mouse.x -= 10;
+				mouse.y -= 5;
+
+				// Relative coordinates of mouse
+				float relativex = (mouse.x - cursorFirstScreen.x) /
+					(ImGui::GetItemRectSize().x - ImGui::CalcTextSize("Amplitude").x);
+				float relativey = (mouse.y - cursorFirstScreen.y) / ImGui::GetItemRectSize().y;
+
+				ImVec2 difference = ImVec2((relativex - (index / 10.0f)) * 2.0f, (1.0f - relativey) - point);
+				float length = sqrt(difference.x * difference.x + difference.y * difference.y);
+
+				if (length < newLength)
 				{
-					points[held] = 1.0f - relative.y;
+					newIndex = index;
+					newLength = length;
 				}
-				else
-				{
-					points[held] = ImVec2(relative.x, 1.0f - relative.y);
-				}*/
 			}
 
-			if (held != -1 && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+			if (newLength < 0.1f)
 			{
-				held = -1;
-				dirty = true;
+				held = newIndex;
 			}
-
-			ImGui::SetCursorPos(cursorSecond);
-
-			//ImVec2 before = ImGui::GetCursorPos();
-			//ImVec2 mouse = ImGui::GetMousePos();
-			//mouse.x -= 65;
-			//mouse.y += 25;
-			//ImGui::SetCursorPos(mouse);
-			//ImGui::ImageButton();
-			//ImGui::SetCursorPos(before);
 		}
 
+		if (held != -1 && ImGui::IsItemHovered())
+		{
+			ImVec2 mouse = ImGui::GetMousePos();
+			ImVec2 relative = ImVec2((mouse.x - cursorFirstScreen.x) / (ImGui::GetItemRectSize().x - ImGui::CalcTextSize("Amplitude").x),
+				(mouse.y - cursorFirstScreen.y) / ImGui::GetItemRectSize().y);
+			layer.points[held] = 1.0f - relative.y;
+		}
+
+		if (held != -1 && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+		{
+			held = -1;
+			dirty = true;
+		}
+
+		ImGui::SetCursorPos(cursorSecond);
 	};
 	auto LayerParameter = [this, ParameterSliderInt, ParameterSliderFloat, ParameterCurveEditor,
 		noiseItems, rotationItems, fractalItems, distanceItems, returnItems, domainItems](Layer& layer)
@@ -446,7 +406,7 @@ void Terrain::Tick(float deltaTime)
 	};
 	auto LerpPoints = [](Layer& layer, float x) -> float
 	{
-		std::vector<float>& points = layer.points;
+		std::array<float, 10>& points = layer.points;
 		size_t lower = 0, upper = 9;
 
 		for (size_t i = 0; i < points.size() - 1; i++)
@@ -494,9 +454,9 @@ void Terrain::Tick(float deltaTime)
 
 				float continentalnessNoise =
 					LerpPoints(continentalness, (continentalness.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * continentalness.noise.GetNoise(fx, fz);
-				float erosionNoise = erosion.noise.GetNoise(fx, fz);
+				float erosionNoise =
 					LerpPoints(erosion, (erosion.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * erosion.noise.GetNoise(fx, fz);
-				float peaksNoise = peaks.noise.GetNoise(fx, fz);
+				float peaksNoise =
 					LerpPoints(peaks, (peaks.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peaks.noise.GetNoise(fx, fz);
 
 				float elevationNoise = (continentalnessNoise * 50.0f +

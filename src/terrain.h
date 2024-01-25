@@ -32,7 +32,7 @@ namespace Tmpl8
 			domainAmplitude = 1.0f;
 
 
-		std::vector<float> points =
+		std::array<float, 10> points =
 		{
 			0.5f,
 			0.5f,
@@ -45,21 +45,6 @@ namespace Tmpl8
 			0.5f,
 			0.5f
 		};
-
-		/*std::vector<ImVec2> points =
-		{
-			ImVec2(0.0f, 0.5f),
-			ImVec2(0.1f, 0.5f),
-			ImVec2(0.2f, 0.5f),
-			ImVec2(0.3f, 0.5f),
-			ImVec2(0.4f, 0.5f),
-			ImVec2(0.5f, 0.5f),
-			ImVec2(0.6f, 0.5f),
-			ImVec2(0.7f, 0.5f),
-			ImVec2(0.8f, 0.5f),
-			ImVec2(0.9f, 0.5f),
-			ImVec2(1.0f, 0.5f)
-		};*/
 			  
 		FastNoiseLite noise;
 	};
