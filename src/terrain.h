@@ -32,8 +32,18 @@ namespace Tmpl8
 			domainAmplitude = 1.0f;
 
 
-		std::array<float, 10> points =
+		std::array<float, 20> points =
 		{
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
+			0.5f,
 			0.5f,
 			0.5f,
 			0.5f,

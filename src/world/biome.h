@@ -138,10 +138,10 @@ constexpr Biome BIOME_FOREST
 	"FOREST",
 
 	// Elevation (min/max)
-	0.0f, 0.4f,
+	0.0f, 0.2f,
 	
 	// Temperature (min/max)
-	-0.2f, 0.4f,
+	0.2f, 0.4f,
 
 	// Humidity (min/max)
 	-0.6f, 0.6f,
@@ -173,10 +173,10 @@ constexpr Biome BIOME_SAVANNA
 	"SAVANNA",
 
 	// Elevation (min/max)
-	0.0f, 0.4f,
+	0.0f, 0.2f,
 
 	// Temperature (min/max)
-	0.2, 1.0,
+	0.2, 0.5,
 
 	// Humidity (min/max)
 	0.4, 1.0,
@@ -191,7 +191,7 @@ constexpr Biome BIOME_SAVANNA
 
 	// Layers
 	{
-		PALETTE_DIRT_MUD,
+		PALETTE_DIRT,
 		PALETTE_DIRT,
 		PALETTE_STONE,
 		PALETTE_STONE
@@ -208,13 +208,13 @@ constexpr Biome BIOME_DESERT
 	"DESERT",
 
 	// Elevation (min/max)
-	0.0f, 0.4f,
+	0.0f, 0.2f,
 
 	// Temperature (min/max)
 	-0.3, 1.0,
 
 	// Humidity (min/max)
-	-1.0, -0.6,
+	-1.0, -0.4,
 
 	// Surface
 	{
@@ -226,9 +226,9 @@ constexpr Biome BIOME_DESERT
 
 	// Layers
 	{
-		PALETTE_SAND,
-		PALETTE_SAND,
 		PALETTE_DIRT,
+		PALETTE_DIRT,
+		PALETTE_STONE,
 		PALETTE_STONE
 	},
 
@@ -243,7 +243,7 @@ constexpr Biome BIOME_TUNDRA
 	"TUNDRA",
 
 	// Elevation (min/max)
-	0.0f, 0.4f,
+	0.0f, 0.2f,
 
 	// Temperature (min/max)
 	-1.0, -0.3,
@@ -278,7 +278,7 @@ constexpr Biome BIOME_MOUNTAIN
 	"MOUNTAIN",
 
 	// Elevation (min/max)
-	0.4f, 1.0f,
+	0.2f, 1.0f,
 
 	// Temperature (min/max)
 	-1.0, 1.0,
@@ -366,9 +366,9 @@ constexpr Biome BIOME_OCEAN
 
 	// Layers
 	{
-		PALETTE_WATER,
-		PALETTE_WATER,
 		PALETTE_DIRT,
+		PALETTE_DIRT,
+		PALETTE_STONE,
 		PALETTE_STONE
 	},
 
@@ -401,9 +401,9 @@ constexpr Biome BIOME_OCEAN_ICE
 
 	// Layers
 	{
-		PALETTE_WATER,
-		PALETTE_WATER,
 		PALETTE_DIRT,
+		PALETTE_DIRT,
+		PALETTE_STONE,
 		PALETTE_STONE
 	},
 

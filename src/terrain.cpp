@@ -59,6 +59,101 @@ void Terrain::Init()
 	// Setup Platform/Renderer backends
 	ImGui_ImplGlfw_InitForOpenGL(GetGlfwWindow(), true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
 	ImGui_ImplOpenGL3_Init();
+
+#if 0
+	continentalness.points =
+	{
+		1.0f,
+		0.3f,
+		0.05f,
+		0.05f,
+		0.05f,
+		0.07f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.9f,
+		0.91f,
+		0.92f,
+		0.92f,
+		0.92f,
+		0.93f,
+		0.94f,
+		0.96f,
+		0.98f,
+		0.99f,
+		1.0f
+	};
+
+	erosion.points =
+	{
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f,
+		1.0f
+
+		/*1.0f,
+		0.8f,
+		0.7f,
+		0.65f,
+		0.64f,
+		0.6f,
+		0.58f,
+		0.6f,
+		0.66f,
+		0.42f,
+		0.3f,
+		0.22f,
+		0.22f,
+		0.21f,
+		0.20f,
+		0.4f,
+		0.5f,
+		0.5f,
+		0.2f,
+		0.1f*/
+	};
+
+	peaks.points =
+	{
+		0.1f,
+		0.15f,
+		0.2f,
+		0.27f,
+		0.29f,
+		0.3f,
+		0.33f,
+		0.36f,
+		0.44f,
+		0.5f,
+		0.59f,
+		0.64f,
+		0.69f,
+		0.73f,
+		0.76f,
+		0.8f,
+		0.87f,
+		0.96f,
+		0.99f,
+		1.0f
+	};
+#endif
 }
 
 void Terrain::HandleInput(float deltaTime)
@@ -99,6 +194,32 @@ void Terrain::HandleInput(float deltaTime)
 		float3 L = cross(cameraDirection, make_float3(0.0f, 1.0f, 0.0f));
 		float3 U = cross(cameraDirection, L);
 		cameraPosition += cameraDirection * forward + L * left + U * up;
+	}
+
+	if (GetAsyncKeyState(VK_SPACE))
+	{
+		Ray ray =
+		{
+			cameraPosition, make_float3(0.0f, -1.0f, 0.0f)
+		};
+		ray.t = 100.0f;
+
+		Intersection intersect = Trace(ray);
+		float3 hitpos = ray.O + ray.D *
+			intersect.GetDistance();
+
+		float fx = static_cast<float>(hitpos.x),
+			fz = static_cast<float>(hitpos.z);
+
+		float temperatureNoise =
+			temperature.noise.GetNoise(fx, fz);
+		float humidityNoise =
+			humidity.noise.GetNoise(fx, fz);
+
+		const Biome& biome = BiomeFunction(hitpos.y / 60.0f - 1.0f,
+			temperatureNoise, humidityNoise);
+
+		printf("%s at %f %f %f (dist %f)\n", biome.name, hitpos.x, hitpos.y, hitpos.z, intersect.GetDistance());
 	}
 
 	// Enable to set spline path points, P key
@@ -194,7 +315,7 @@ void Terrain::HandleInterface()
 
 		if (ImGui::Button("Random"))
 		{
-			value = random() % max;
+			value = abs(random()) % max;
 			dirty = true;
 		}
 
@@ -227,7 +348,7 @@ void Terrain::HandleInterface()
 		ImVec2 cursorFirst = ImGui::GetCursorPos();
 		ImVec2 cursorFirstScreen = ImGui::GetCursorScreenPos();
 
-		ImGui::PlotLines("Amplitude", layer.points.data(), 10, 0, NULL, 0.0f, 1.0f, ImVec2(0, 80));
+		ImGui::PlotLines("Amplitude", layer.points.data(), 20, 0, NULL, 0.0f, 1.0f, ImVec2(0, 80));
 		ImVec2 cursorSecond = ImGui::GetCursorPos();
 		ImGui::SetCursorPos(cursorFirst);
 
@@ -250,7 +371,7 @@ void Terrain::HandleInterface()
 					(ImGui::GetItemRectSize().x - ImGui::CalcTextSize("Amplitude").x);
 				float relativey = (mouse.y - cursorFirstScreen.y) / ImGui::GetItemRectSize().y;
 
-				ImVec2 difference = ImVec2((relativex - (index / 10.0f)) * 2.0f, (1.0f - relativey) - point);
+				ImVec2 difference = ImVec2((relativex - (index / 20.0f)) * 2.0f, (1.0f - relativey) - point);
 				float length = sqrt(difference.x * difference.x + difference.y * difference.y);
 
 				if (length < newLength)
@@ -286,7 +407,7 @@ void Terrain::HandleInterface()
 		noiseItems, rotationItems, fractalItems, distanceItems, returnItems, domainItems](Layer& layer)
 	{
 		ParameterSliderInt("Seed", layer.seed, -INT_MIN / 2, INT_MAX / 2);
-		ParameterSliderFloat("Frequency", layer.frequency, 0, 1.0f);
+		ParameterSliderFloat("Frequency", layer.frequency, 0, 0.1f);
 		ParameterSliderInt("Fractal Octaves", layer.fractalOctaves, 0, 8);
 		ParameterSliderFloat("Fractal Lacunarity", layer.fractalLacunarity, 0.0f, 8.0f);
 		ParameterSliderFloat("Fractal Gain", layer.fractalGain, 0.0f, 4.0f);
@@ -342,7 +463,6 @@ void Terrain::HandleInterface()
 	{
 		ImGui::TreePop();
 	}
-
 	if (ImGui::TreeNode("Elevation"))
 	{
 		if (ImGui::TreeNode("Continental"))
@@ -365,13 +485,11 @@ void Terrain::HandleInterface()
 		
 		ImGui::TreePop();
 	}
-
 	if (ImGui::TreeNode("Temperature"))
 	{
 		LayerParameter(temperature);
 		ImGui::TreePop();
 	}
-
 	if (ImGui::TreeNode("Humidity"))
 	{
 		LayerParameter(humidity);
@@ -406,13 +524,13 @@ void Terrain::Tick(float deltaTime)
 	};
 	auto LerpPoints = [](Layer& layer, float x) -> float
 	{
-		std::array<float, 10>& points = layer.points;
-		size_t lower = 0, upper = 9;
+		std::array<float, 20>& points = layer.points;
+		size_t lower = 0, upper = 19;
 
 		for (size_t i = 0; i < points.size() - 1; i++)
 		{
 			// Is x within bounds
-			if (x >= (i / 10.0f) && x < (i + 1) / 10.0f)
+			if (x >= (i / 20.0f) && x < (i + 1) / 20.0f)
 			{
 				lower = i;
 				upper = i + 1;
@@ -420,7 +538,7 @@ void Terrain::Tick(float deltaTime)
 			}
 		}
 
-		float t = (x - (lower / 10.0f)) / ((upper / 10.0f) - (lower / 10.0f));
+		float t = (x - (lower / 20.0f)) / ((upper / 20.0f) - (lower / 20.0f));
 		return std::lerp(points[lower], points[upper], t);
 	};
 
@@ -459,20 +577,43 @@ void Terrain::Tick(float deltaTime)
 				float peaksNoise =
 					LerpPoints(peaks, (peaks.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peaks.noise.GetNoise(fx, fz);
 
-				float elevationNoise = (continentalnessNoise * 50.0f +
-					erosionNoise * 20.0f + peaksNoise * 10.0f + 80.0f) / 2.0f;
+				float elevationNoise = ((continentalnessNoise * 80.0f +
+					peaksNoise * 40.0f) * erosionNoise + 120.0f) / 2.0f;
 				float temperatureNoise =
 					temperature.noise.GetNoise(fx, fz);
 				float humidityNoise =
 					humidity.noise.GetNoise(fx, fz);
 
-				const Biome& biome = BiomeFunction(elevationNoise / 80.0f,
+				// Height is messing with the ocean biome, above 0.0f and no ocean can exist
+				const Biome& biome = BiomeFunction(elevationNoise / 60.0f - 1.0f,
 					temperatureNoise, humidityNoise);
 
-				for (int y = 0; y < elevationNoise; y++)
+				constexpr int surfaceLimit = 3;
+				int yLimit = dimension ? elevationNoise : 1;
+
+				/*if ((biome.name == "OCEAN" || biome.name == "OCEAN_ICE") &&
+					elevationNoise / 60.0f - 1.0f < 0.0f)
+				{
+					yLimit = 90;
+				}*/
+
+				for (int y = 0; y < yLimit; y++)
+				{
+					if (y > yLimit - surfaceLimit)
+					{
+						Plot(x, y, z, biome.surface[urandom() % 4][urandom() % 8]);
+					}
+					else
+					{
+						Plot(x, y, z, biome.layers[
+							clamp(elevationNoise / y, 0.0f, 3.0f)][urandom() % 8]);
+					}
+				}
+
+				/*for (int y = 0; y < yLimit; y++)
 				{
 					Plot(x, y, z, PALETTE_GRAY[(int)min(floor(y / 10.0f), 7.0f)]);
-				}
+				}*/
 
 				/*for (int y = 0; y < terrainY; y++)
 				{
