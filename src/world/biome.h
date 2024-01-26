@@ -17,12 +17,27 @@ struct Biome
 
 constexpr std::array<uint16_t, 14> colors =
 {
+	/*0x555,
+	0x331,
+	0x222,
+	0x111,
+	0x231,
+	0x221,
+	0x332,
+	0x020,
+	0x120,
+	0x230,
+	0x011,
+	0x021,
+	0x442,
+	0x012*/
+
 	0x777,
 	0x553,
 	0x333,
 	0x111,
+	0x463,
 	0x453,
-	0x443,
 	0x664,
 	0x242,
 	0x342,
@@ -68,6 +83,6 @@ uint8_t BiomeFunction(const float elevation, const float temperature, const floa
 		return 13; // OCEAN
 	}
 	
-	return zones[(int)(4.0f - (elevation + 1.0f) * 2.0f)]
+	return zones[(int)clamp(4.0f - (elevation * temperature + 1.0f) * 2.0f, 0.0f, 3.0f)]
 		[(int)((humidity + 1.0f) * 3.0f)];
 }

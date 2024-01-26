@@ -589,25 +589,13 @@ void Terrain::Tick(float deltaTime)
 		ClearWorld();
 		auto start = std::chrono::system_clock::now();
 		
+#if 1
 		for (int x = 0; x < terrainX; x++)
 		{
 			for (int z = 0; z < terrainZ; z++)
 			{
 				float fx = static_cast<float>(x),
 					fz = static_cast<float>(z);
-
-				/*float continentalnessNoise = continentalness.noise.GetNoise(fx, fz);
-				float temperatureNoise = temperature.noise.GetNoise(fx, fz);
-				float humidityNoise = humidity.noise.GetNoise(fx, fz);
-
-				const uint8_t biome = BiomeFunction(continentalnessNoise,
-					temperatureNoise, humidityNoise);
-				int limit = dimension ? static_cast<int>((continentalnessNoise + 1.0f) * 40.0f) : 1;
-
-				for (int y = limit; y > -1; y--)
-				{
-					Plot(x, y, z, colors[biome]);
-				}*/
 
 				float continentalnessNoise =
 					LerpPoints(continentalness, (continentalness.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * continentalness.noise.GetNoise(fx, fz);
@@ -617,16 +605,17 @@ void Terrain::Tick(float deltaTime)
 					LerpPoints(peaks, (peaks.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peaks.noise.GetNoise(fx, fz);
 
 				float elevationNoise = ((continentalnessNoise * 100.0f +
-					peaksNoise * 60.0f) * erosionNoise + 120.0f) / 2.0f;
+					(peaksNoise + 0.3f) * 60.0f) * erosionNoise + 120.0f) / 2.0f;
 				float temperatureNoise =
-					temperature.noise.GetNoise(fx, fz);
+					clamp(cos(PI * (x / 1024.0f)) + temperature.noise.GetNoise(fx, fz), -1.0f, 1.0f);
+					//temperature.noise.GetNoise(fx, fz);
 				float humidityNoise =
-					humidity.noise.GetNoise(fx, fz);
+					clamp(sin(PI * (x / 1024.0f)) + humidity.noise.GetNoise(fx, fz), -1.0f, 1.0f);
+					//humidity.noise.GetNoise(fx, fz);
 
-				// Height is messing with the ocean biome, above 0.0f and no ocean can exist
 				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f,
 					temperatureNoise, humidityNoise);
-				int limit = dimension ? elevationNoise : 1;
+				int limit = static_cast<int>(dimension ? elevationNoise : 1);
 
 				for (int y = limit; y > -1; y--)
 				{
@@ -634,7 +623,15 @@ void Terrain::Tick(float deltaTime)
 				}
 			}
 		}
-end:
+#else
+		for (int x = 0; x < colors.size(); x++)
+		{
+			for (int y = 30; y > -1; y--)
+			{
+				Plot(x, y, 0, colors[x]);
+			}
+		}
+#endif
 
 		using namespace std::chrono;
 		auto end = system_clock::now();
