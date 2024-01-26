@@ -60,7 +60,7 @@ void Terrain::Init()
 	ImGui_ImplGlfw_InitForOpenGL(GetGlfwWindow(), true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
 	ImGui_ImplOpenGL3_Init();
 
-#if 0
+#if 1
 	continentalness.points =
 	{
 		1.0f,
@@ -202,7 +202,7 @@ void Terrain::HandleInput(float deltaTime)
 		{
 			cameraPosition, make_float3(0.0f, -1.0f, 0.0f)
 		};
-		ray.t = 100.0f;
+		ray.t = 1000.0f;
 
 		Intersection intersect = Trace(ray);
 		float3 hitpos = ray.O + ray.D *
@@ -216,10 +216,11 @@ void Terrain::HandleInput(float deltaTime)
 		float humidityNoise =
 			humidity.noise.GetNoise(fx, fz);
 
-		const Biome& biome = BiomeFunction(hitpos.y / 60.0f - 1.0f,
+		const uint8_t biome = BiomeFunction(hitpos.y / 60.0f - 1.0f,
 			temperatureNoise, humidityNoise);
 
-		printf("%s at %f %f %f (dist %f)\n", biome.name, hitpos.x, hitpos.y, hitpos.z, intersect.GetDistance());
+		printf("%i: %s at (%f %f %f with a distance of %f)\n", biome, biomes[biome].name,
+			hitpos.x, hitpos.y, hitpos.z, intersect.GetDistance());
 	}
 
 	// Enable to set spline path points, P key
@@ -467,32 +468,57 @@ void Terrain::HandleInterface()
 	{
 		if (ImGui::TreeNode("Continental"))
 		{
-			LayerParameter(continentalness);
+			if (ImGui::TreeNode("Noise"))
+			{
+				LayerParameter(continentalness);
+				ImGui::TreePop();
+			}
 			ImGui::TreePop();
 		}
 
 		if (ImGui::TreeNode("Erosion"))
 		{
-			LayerParameter(erosion);
+			if (ImGui::TreeNode("Noise"))
+			{
+				LayerParameter(erosion);
+				ImGui::TreePop();
+			}
 			ImGui::TreePop();
 		}
 
 		if (ImGui::TreeNode("Peaks"))
 		{
-			LayerParameter(peaks);
+			if (ImGui::TreeNode("Noise"))
+			{
+				LayerParameter(peaks);
+				ImGui::TreePop();
+			}
 			ImGui::TreePop();
 		}
 		
 		ImGui::TreePop();
 	}
-	if (ImGui::TreeNode("Temperature"))
+	if (ImGui::TreeNode("Climate"))
 	{
-		LayerParameter(temperature);
-		ImGui::TreePop();
-	}
-	if (ImGui::TreeNode("Humidity"))
-	{
-		LayerParameter(humidity);
+		if (ImGui::TreeNode("Temperature"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				LayerParameter(temperature);
+				ImGui::TreePop();
+			}
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("Humidity"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				LayerParameter(humidity);
+				ImGui::TreePop();
+			}
+			ImGui::TreePop();
+		}
+
 		ImGui::TreePop();
 	}
 
@@ -570,6 +596,19 @@ void Terrain::Tick(float deltaTime)
 				float fx = static_cast<float>(x),
 					fz = static_cast<float>(z);
 
+				/*float continentalnessNoise = continentalness.noise.GetNoise(fx, fz);
+				float temperatureNoise = temperature.noise.GetNoise(fx, fz);
+				float humidityNoise = humidity.noise.GetNoise(fx, fz);
+
+				const uint8_t biome = BiomeFunction(continentalnessNoise,
+					temperatureNoise, humidityNoise);
+				int limit = dimension ? static_cast<int>((continentalnessNoise + 1.0f) * 40.0f) : 1;
+
+				for (int y = limit; y > -1; y--)
+				{
+					Plot(x, y, z, colors[biome]);
+				}*/
+
 				float continentalnessNoise =
 					LerpPoints(continentalness, (continentalness.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * continentalness.noise.GetNoise(fx, fz);
 				float erosionNoise =
@@ -577,73 +616,25 @@ void Terrain::Tick(float deltaTime)
 				float peaksNoise =
 					LerpPoints(peaks, (peaks.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peaks.noise.GetNoise(fx, fz);
 
-				float elevationNoise = ((continentalnessNoise * 80.0f +
-					peaksNoise * 40.0f) * erosionNoise + 120.0f) / 2.0f;
+				float elevationNoise = ((continentalnessNoise * 100.0f +
+					peaksNoise * 60.0f) * erosionNoise + 120.0f) / 2.0f;
 				float temperatureNoise =
 					temperature.noise.GetNoise(fx, fz);
 				float humidityNoise =
 					humidity.noise.GetNoise(fx, fz);
 
 				// Height is messing with the ocean biome, above 0.0f and no ocean can exist
-				const Biome& biome = BiomeFunction(elevationNoise / 60.0f - 1.0f,
+				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f,
 					temperatureNoise, humidityNoise);
+				int limit = dimension ? elevationNoise : 1;
 
-				constexpr int surfaceLimit = 3;
-				int yLimit = dimension ? elevationNoise : 1;
-
-				/*if ((biome.name == "OCEAN" || biome.name == "OCEAN_ICE") &&
-					elevationNoise / 60.0f - 1.0f < 0.0f)
+				for (int y = limit; y > -1; y--)
 				{
-					yLimit = 90;
-				}*/
-
-				for (int y = 0; y < yLimit; y++)
-				{
-					if (y > yLimit - surfaceLimit)
-					{
-						Plot(x, y, z, biome.surface[urandom() % 4][urandom() % 8]);
-					}
-					else
-					{
-						Plot(x, y, z, biome.layers[
-							clamp(elevationNoise / y, 0.0f, 3.0f)][urandom() % 8]);
-					}
+					Plot(x, y, z, colors[biome]);
 				}
-
-				/*for (int y = 0; y < yLimit; y++)
-				{
-					Plot(x, y, z, PALETTE_GRAY[(int)min(floor(y / 10.0f), 7.0f)]);
-				}*/
-
-				/*for (int y = 0; y < terrainY; y++)
-				{
-					if (y < (dimension ? terrainY : 1))
-					{
-						size_t paletteIndex = urandom() % 8;
-						std::array<uint, 8> palette = paletteTest ?
-							biomes[paletteTest - 1].surface[0] : biome.surface[0];
-						const std::array<float, 5> presetNoise =
-						{
-							continentalnessNoise, erosionNoise, peaksNoise, 
-							temperatureNoise, humidityNoise
-						};
-
-						if (presetTest)
-						{
-							paletteIndex = static_cast<size_t>
-								((presetNoise[presetTest - 1] + 0.99f) * 4.0f);
-							palette = PALETTE_GRAY;
-						}
-
-						if (y < (elevationNoise / 3.0f + 1.0f) * 32.0f)
-						{
-							Plot(x, y, z, palette[paletteIndex]);
-						}
-						voxels++;
-					}
-				}*/
 			}
 		}
+end:
 
 		using namespace std::chrono;
 		auto end = system_clock::now();
