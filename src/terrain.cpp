@@ -607,11 +607,11 @@ void Terrain::Tick(float deltaTime)
 				float elevationNoise = ((continentalnessNoise * 100.0f +
 					(peaksNoise + 0.3f) * 60.0f) * erosionNoise + 120.0f) / 2.0f;
 				float temperatureNoise =
-					clamp(cos(PI * (x / 1024.0f)) + temperature.noise.GetNoise(fx, fz), -1.0f, 1.0f);
-					//temperature.noise.GetNoise(fx, fz);
+					//clamp(cos(PI * (x / 1024.0f)) + temperature.noise.GetNoise(fx, fz), -1.0f, 1.0f);
+					temperature.noise.GetNoise(fx, fz);
 				float humidityNoise =
-					clamp(sin(PI * (x / 1024.0f)) + humidity.noise.GetNoise(fx, fz), -1.0f, 1.0f);
-					//humidity.noise.GetNoise(fx, fz);
+					//clamp(sin(PI * (x / 1024.0f)) + humidity.noise.GetNoise(fx, fz), -1.0f, 1.0f);
+					humidity.noise.GetNoise(fx, fz);
 
 				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f,
 					temperatureNoise, humidityNoise);
