@@ -456,9 +456,10 @@ void Terrain::HandleInterface()
 	ImGui::NewLine();
 
 	ImGui::SeparatorText("Terrain");
-	ParameterSliderInt("Terrain X", terrainX, 1, 1024);
-	//ParameterSliderInt("Terrain Y", terrainY, 1, 128);
-	ParameterSliderInt("Terrain Z", terrainZ, 1, 1024);
+	ParameterSliderInt("Terrain X", terrainX, 0, 1024);
+	ParameterSliderInt("Terrain Z", terrainZ, 0, 1024);
+	ParameterSliderInt("Terrain Offset X", terrainOffsetX, 0, 8192);
+	ParameterSliderInt("Terrain Offset Z", terrainOffsetZ, 0, 8192);
 
 	if (ImGui::TreeNode("Biome"))
 	{
@@ -594,8 +595,8 @@ void Terrain::Tick(float deltaTime)
 		{
 			for (int z = 0; z < terrainZ; z++)
 			{
-				float fx = static_cast<float>(x),
-					fz = static_cast<float>(z);
+				float fx = static_cast<float>(x + terrainOffsetX),
+					fz = static_cast<float>(z + terrainOffsetZ);
 
 				float continentalnessNoise =
 					LerpPoints(continentalness, (continentalness.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * continentalness.noise.GetNoise(fx, fz);
@@ -607,11 +608,11 @@ void Terrain::Tick(float deltaTime)
 				float elevationNoise = ((continentalnessNoise * 100.0f +
 					(peaksNoise + 0.3f) * 60.0f) * erosionNoise + 120.0f) / 2.0f;
 				float temperatureNoise =
-					//clamp(cos(PI * (x / 1024.0f)) + temperature.noise.GetNoise(fx, fz), -1.0f, 1.0f);
+					//clamp(cos(PI * (x / 512.0f)) + temperature.noise.GetNoise(fx, fz), -1.0f, 1.0f);
 					temperature.noise.GetNoise(fx, fz);
 				float humidityNoise =
-					//clamp(sin(PI * (x / 1024.0f)) + humidity.noise.GetNoise(fx, fz), -1.0f, 1.0f);
-					humidity.noise.GetNoise(fx, fz);
+					clamp(sin(PI * (x / 1024.0f)) + humidity.noise.GetNoise(fx, fz), -1.0f, 1.0f);
+					//humidity.noise.GetNoise(fx, fz);
 
 				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f,
 					temperatureNoise, humidityNoise);
@@ -620,6 +621,7 @@ void Terrain::Tick(float deltaTime)
 				for (int y = limit; y > -1; y--)
 				{
 					Plot(x, y, z, colors[biome]);
+					voxels++;
 				}
 			}
 		}
@@ -629,6 +631,7 @@ void Terrain::Tick(float deltaTime)
 			for (int y = 30; y > -1; y--)
 			{
 				Plot(x, y, 0, colors[x]);
+				voxels++;
 			}
 		}
 #endif

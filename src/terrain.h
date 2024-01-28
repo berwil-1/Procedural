@@ -105,8 +105,7 @@ namespace Tmpl8
 		bool dirty = true;
 		int dimension = 0; // 0 = 2d, 1 = 3d
 		int presetTest = 0, paletteTest = 0;
-		//int terrainX = 512, terrainY = 32, terrainZ = 512;
-		int terrainX = 512, terrainZ = 512;
+		int terrainX = 512, terrainZ = 512, terrainOffsetX = 0, terrainOffsetZ = 0;
 
 		Layer continentalness, erosion, peaks,
 			temperature, humidity;

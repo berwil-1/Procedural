@@ -82,7 +82,7 @@ uint8_t BiomeFunction(const float elevation, const float temperature, const floa
 	}
 	
 	int elevationIndex = static_cast<int>(clamp(4.0f -
-		(elevation + 1.0f) * 2.0f, 0.0f, 3.0f));
+		elevation * 4.0f, 0.0f, 3.0f));
 	int humidityIndex = static_cast<int>(clamp((humidity + 1.0f) * 3.0f - elevation, 0.0f, 5.0f));
 	return zones[elevationIndex][humidityIndex];
 }
