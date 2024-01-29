@@ -615,7 +615,7 @@ void Terrain::Tick(float deltaTime)
 					limit = 60.0f;
 				}
 
-				(*world)[x][z] = { limit, colors[biome] };
+				(*world)[x][z] = { limit, elevationNoise < 60.0f ? (0x006 + (static_cast<int>(0x006 * elevationNoise / 60.0f) << 4)) : colors[biome]};
 			}
 		}
 
