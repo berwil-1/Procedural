@@ -196,33 +196,6 @@ void Terrain::HandleInput(float deltaTime)
 		cameraPosition += cameraDirection * forward + L * left + U * up;
 	}
 
-	if (GetAsyncKeyState(VK_SPACE))
-	{
-		Ray ray =
-		{
-			cameraPosition, make_float3(0.0f, -1.0f, 0.0f)
-		};
-		ray.t = 1000.0f;
-
-		Intersection intersect = Trace(ray);
-		float3 hitpos = ray.O + ray.D *
-			intersect.GetDistance();
-
-		float fx = static_cast<float>(hitpos.x),
-			fz = static_cast<float>(hitpos.z);
-
-		float temperatureNoise =
-			temperature.noise.GetNoise(fx, fz);
-		float humidityNoise =
-			humidity.noise.GetNoise(fx, fz);
-
-		const uint8_t biome = BiomeFunction(hitpos.y / 60.0f - 1.0f,
-			temperatureNoise, humidityNoise);
-
-		printf("%i: %s at (%f %f %f with a distance of %f)\n", biome, biomes[biome].name,
-			hitpos.x, hitpos.y, hitpos.z, intersect.GetDistance());
-	}
-
 	// Enable to set spline path points, P key
 	static bool pdown = false;
 	static FILE* pf = 0;
@@ -453,6 +426,7 @@ void Terrain::HandleInterface()
 	ImGui::SameLine();
 	dirty |= ImGui::RadioButton("3D", &dimension, 1);
 
+	dirty |= ImGui::Checkbox("Waterfill", &waterfill);
 	ImGui::NewLine();
 
 	ImGui::SeparatorText("Terrain");
@@ -568,6 +542,22 @@ void Terrain::Tick(float deltaTime)
 		float t = (x - (lower / 20.0f)) / ((upper / 20.0f) - (lower / 20.0f));
 		return std::lerp(points[lower], points[upper], t);
 	};
+	auto LerpColors = [](uint16_t a, uint16_t b, float t) -> uint16_t
+	{
+		uint16_t ra = (a >> 8);
+		uint16_t rb = (b >> 8);
+		uint16_t rl = static_cast<uint16_t>(lerp(ra, rb, t));
+
+		uint16_t ga = (a >> 4) & 15;
+		uint16_t gb = (b >> 4) & 15;
+		uint16_t gl = static_cast<uint16_t>(lerp(ga, gb, t));
+
+		uint16_t ba = a & 15;
+		uint16_t bb = b & 15;
+		uint16_t bl = static_cast<uint16_t>(lerp(ba, bb, t));
+
+		return (rl << 8) | (gl << 4) | bl;
+	};
 
 	HandleInput(deltaTime);
 
@@ -591,9 +581,12 @@ void Terrain::Tick(float deltaTime)
 		auto start = std::chrono::system_clock::now();
 		
 #if 1
-		for (int x = 0; x < terrainX; x++)
+		std::array<std::array<std::pair<int, uint16_t>,
+			1024>, 1024>* world = new std::array<std::array<std::pair<int, uint16_t>, 1024>, 1024>();
+
+		for (int x = 0; x < 1024; x++)
 		{
-			for (int z = 0; z < terrainZ; z++)
+			for (int z = 0; z < 1024; z++)
 			{
 				float fx = static_cast<float>(x + terrainOffsetX),
 					fz = static_cast<float>(z + terrainOffsetZ);
@@ -605,32 +598,55 @@ void Terrain::Tick(float deltaTime)
 				float peaksNoise =
 					LerpPoints(peaks, (peaks.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peaks.noise.GetNoise(fx, fz);
 
-				float elevationNoise = ((continentalnessNoise * 100.0f +
-					(peaksNoise + 0.3f) * 60.0f) * erosionNoise + 120.0f) / 2.0f;
+				float elevationNoise = clamp(((continentalnessNoise * 200.0f +
+					(peaksNoise + 0.3f) * 40.0f) * erosionNoise + 120.0f) / 2.0f, 0.0f, 240.0f);
 				float temperatureNoise =
-					//clamp(cos(PI * (x / 512.0f)) + temperature.noise.GetNoise(fx, fz), -1.0f, 1.0f);
 					temperature.noise.GetNoise(fx, fz);
 				float humidityNoise =
-					clamp(sin(PI * (x / 1024.0f)) + humidity.noise.GetNoise(fx, fz), -1.0f, 1.0f);
-					//humidity.noise.GetNoise(fx, fz);
+					0.1f * powf(2, -10.0f * powf(x / 512.0f - 1.0f, 2.0f)) +
+					humidity.noise.GetNoise(fx, fz);
 
 				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f,
 					temperatureNoise, humidityNoise);
 				int limit = static_cast<int>(dimension ? elevationNoise : 1);
 
+				if (waterfill && elevationNoise < 60.0f)
+				{
+					limit = 60.0f;
+				}
+
+				(*world)[x][z] = { limit, colors[biome] };
+			}
+		}
+
+		for (int x = 0; x < terrainX; x++)
+		{
+			for (int z = 0; z < terrainZ; z++)
+			{
+				const int limit = (*world)[x][z].first;
+				const uint16_t color =
+					LerpColors
+					(
+						LerpColors((*world)[max(x - 4, 0)][z].second, (*world)[min(x + 4, 1023)][z].second, 0.5f),
+						LerpColors((*world)[x][max(z - 4, 0)].second, (*world)[x][min(z + 4, 1023)].second, 0.5f),
+						0.5f
+					);
+
 				for (int y = limit; y > -1; y--)
 				{
-					Plot(x, y, z, colors[biome]);
+					Plot(x, y, z, color);
 					voxels++;
 				}
 			}
 		}
+
+		delete world;
 #else
 		for (int x = 0; x < colors.size(); x++)
 		{
 			for (int y = 30; y > -1; y--)
 			{
-				Plot(x, y, 0, colors[x]);
+				Plot(x, y, 0, LerpColors(colors[x], 0xFFF, 1.0f - y / 30.0f));
 				voxels++;
 			}
 		}
