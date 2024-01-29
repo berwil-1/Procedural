@@ -132,7 +132,7 @@ void Terrain::Init()
 
 	peaks.points =
 	{
-		0.1f,
+		/*0.1f,
 		0.15f,
 		0.2f,
 		0.27f,
@@ -141,6 +141,27 @@ void Terrain::Init()
 		0.33f,
 		0.36f,
 		0.44f,
+		0.5f,
+		0.59f,
+		0.64f,
+		0.69f,
+		0.73f,
+		0.76f,
+		0.8f,
+		0.87f,
+		0.96f,
+		0.99f,
+		1.0f*/
+
+		1.0f,
+		0.95f,
+		0.9f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
 		0.5f,
 		0.59f,
 		0.64f,
@@ -427,6 +448,7 @@ void Terrain::HandleInterface()
 	dirty |= ImGui::RadioButton("3D", &dimension, 1);
 
 	dirty |= ImGui::Checkbox("Waterfill", &waterfill);
+	dirty |= ImGui::Checkbox("Water erosion", &watererosion);
 	ImGui::NewLine();
 
 	ImGui::SeparatorText("Terrain");
@@ -607,12 +629,12 @@ void Terrain::Tick(float deltaTime)
 					humidity.noise.GetNoise(fx, fz);
 
 				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f,
-					temperatureNoise, humidityNoise);
+													temperatureNoise, humidityNoise);
 				int limit = static_cast<int>(dimension ? elevationNoise : 1);
 
 				if (waterfill && elevationNoise < 60.0f)
 				{
-					limit = 60.0f;
+					limit = 60;
 				}
 
 				(*world)[x][z] = { limit, elevationNoise < 60.0f ? (0x006 + (static_cast<int>(0x006 * elevationNoise / 60.0f) << 4)) : colors[biome]};
@@ -623,7 +645,15 @@ void Terrain::Tick(float deltaTime)
 		{
 			for (int z = 0; z < terrainZ; z++)
 			{
-				const int limit = (*world)[x][z].first;
+				int limit = (*world)[x][z].first;
+
+				if (watererosion && limit < 60)
+				{
+					int a = lerp((*world)[max(x - 4, 0)][z].first, (*world)[min(x + 4, 1023)][z].first, 0.5f);
+					int b = lerp((*world)[x][max(z - 4, 0)].first, (*world)[x][min(z + 4, 1023)].first, 0.5f);
+					limit = lerp(a, b, 0.5f);
+				}
+
 				const uint16_t color =
 					LerpColors
 					(
