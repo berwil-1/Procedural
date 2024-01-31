@@ -177,6 +177,30 @@ void Terrain::Init()
 		0.99f,
 		1.0f
 	};
+
+	contdensity.points =
+	{
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f,
+		0.5f
+	};
 #endif
 }
 
@@ -720,7 +744,16 @@ void Terrain::Tick(float deltaTime)
 					float peakdensityNoise =
 						LerpPoints(peakdensity, (peakdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peakdensity.noise.GetNoise(fx, fz);
 					
+					//float height = erosion.noise.GetNoise(fx, fz) * 5.0f;
+					float height = 2.0f;
 
+					if (y < limit + height - 20 && y > limit - height - 20 &&
+						abs(contdensityNoise * 5.0f + densityNoise) <
+						0.1f + peakdensityNoise * 0.05f)
+					{
+						Plot(x, y, z, color);
+						voxels++;
+					}
 
 					//float d = (contdensityNoise * 55.0f + densityNoise * 8.0f + peakdensityNoise) / 64.0f;
 					//float d3 = contdensity.noise.GetNoise(fx, fy, fz) * 10.0f;
