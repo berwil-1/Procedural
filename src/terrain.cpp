@@ -35,6 +35,9 @@ void Terrain::Init()
 		fread(&peaks, 1, sizeof(peaks), f);
 		fread(&temperature, 1, sizeof(temperature), f);
 		fread(&humidity, 1, sizeof(humidity), f);
+		fread(&contdensity, 1, sizeof(contdensity), f);
+		fread(&density, 1, sizeof(density), f);
+		fread(&peakdensity, 1, sizeof(peakdensity), f);
 		fclose(f);
 	}
 
@@ -189,21 +192,27 @@ void Terrain::HandleInput(float deltaTime)
 		glfwSetInputMode(GetGlfwWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	}
 
+	// Freecam controls
 	if (GetAsyncKeyState(VK_RBUTTON))
 	{
 		float rotationSpeed = 0.1f;
-		float movementSpeed =
-			(deltaTime / 1000.0f) * 0.01f;
-		static float mouseX =
-			atan2(cameraDirection.x, cameraDirection.z) * (180.0f / PI) / rotationSpeed;
-		static float mouseY =
-			acos(cameraDirection.y) * (180.0f / PI) / rotationSpeed;
+		static float movementConstant = 0.01f;
+		float movementSpeed = (deltaTime / 1000.0f) * movementConstant;
+		static float mouseX = atan2(cameraDirection.x, cameraDirection.z) * (180.0f / PI) / rotationSpeed;
+		static float mouseY = acos(cameraDirection.y) * (180.0f / PI) / rotationSpeed;
+
+		if (mouseScroll.x || mouseScroll.y)
+		{
+			movementConstant *= pow(1.1f, mouseScroll.y);
+		}
 
 		mouseX += mouseDelta.x;
 		mouseY = clamp(mouseY + mouseDelta.y, 1.0f, 1799.0f);
+
 		float forward = movementSpeed * (GetAsyncKeyState('S') - GetAsyncKeyState('W'));
 		float left = movementSpeed * (GetAsyncKeyState('D') - GetAsyncKeyState('A'));
 		float up = movementSpeed * (GetAsyncKeyState('E') - GetAsyncKeyState('Q'));
+
 		float pitch = rotationSpeed * mouseY * (PI / 180);
 		float yaw = rotationSpeed * mouseX * (PI / 180);
 
@@ -245,6 +254,7 @@ void Terrain::HandleInput(float deltaTime)
 #endif
 
 	mouseDelta = { 0, 0 };
+	mouseScroll = { 0, 0 };
 }
 
 void Terrain::HandleInterface()
@@ -334,7 +344,7 @@ void Terrain::HandleInterface()
 
 		ImGui::PopStyleColor(3);
 		ImGui::SameLine();
-		ImGui::SliderFloat(label, &value, min, max);
+		ImGui::SliderFloat(label, &value, min, max, "%.5f");
 		dirty |= ImGui::IsItemDeactivatedAfterEdit();
 	};
 	auto ParameterCurveEditor = [this](Layer& layer)
@@ -376,7 +386,7 @@ void Terrain::HandleInterface()
 				}
 			}
 
-			if (newLength < 0.1f)
+			if (newLength < 0.2f)
 			{
 				held = newIndex;
 			}
@@ -447,6 +457,7 @@ void Terrain::HandleInterface()
 	ImGui::SameLine();
 	dirty |= ImGui::RadioButton("3D", &dimension, 1);
 
+	dirty |= ImGui::Checkbox("Colorblend", &colorblend);
 	dirty |= ImGui::Checkbox("Waterfill", &waterfill);
 	dirty |= ImGui::Checkbox("Water erosion", &watererosion);
 	ImGui::NewLine();
@@ -454,13 +465,9 @@ void Terrain::HandleInterface()
 	ImGui::SeparatorText("Terrain");
 	ParameterSliderInt("Terrain X", terrainX, 0, 1024);
 	ParameterSliderInt("Terrain Z", terrainZ, 0, 1024);
-	ParameterSliderInt("Terrain Offset X", terrainOffsetX, 0, 8192);
-	ParameterSliderInt("Terrain Offset Z", terrainOffsetZ, 0, 8192);
+	ParameterSliderInt("Terrain Offset X", terrainOffsetX, -8192, 8192);
+	ParameterSliderInt("Terrain Offset Z", terrainOffsetZ, -8192, 8192);
 
-	if (ImGui::TreeNode("Biome"))
-	{
-		ImGui::TreePop();
-	}
 	if (ImGui::TreeNode("Elevation"))
 	{
 		if (ImGui::TreeNode("Continental"))
@@ -470,6 +477,7 @@ void Terrain::HandleInterface()
 				LayerParameter(continentalness);
 				ImGui::TreePop();
 			}
+
 			ImGui::TreePop();
 		}
 
@@ -480,6 +488,7 @@ void Terrain::HandleInterface()
 				LayerParameter(erosion);
 				ImGui::TreePop();
 			}
+
 			ImGui::TreePop();
 		}
 
@@ -490,6 +499,7 @@ void Terrain::HandleInterface()
 				LayerParameter(peaks);
 				ImGui::TreePop();
 			}
+
 			ImGui::TreePop();
 		}
 		
@@ -504,6 +514,7 @@ void Terrain::HandleInterface()
 				LayerParameter(temperature);
 				ImGui::TreePop();
 			}
+
 			ImGui::TreePop();
 		}
 		if (ImGui::TreeNode("Humidity"))
@@ -513,6 +524,44 @@ void Terrain::HandleInterface()
 				LayerParameter(humidity);
 				ImGui::TreePop();
 			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNode("Density"))
+	{
+		if (ImGui::TreeNode("Continental"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				LayerParameter(contdensity);
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Density"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				LayerParameter(density);
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Peaks"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				LayerParameter(peakdensity);
+				ImGui::TreePop();
+			}
+
 			ImGui::TreePop();
 		}
 
@@ -583,12 +632,6 @@ void Terrain::Tick(float deltaTime)
 
 	HandleInput(deltaTime);
 
-	// 
-	//  TODO: move towards a pipeline arcitecture,
-	//  eg. allocate volume, 2d layer generator (take in previous layers),
-	//  produce biomes from biome function, use biome to 
-	// 
-
 	// Gather noise data
 	if (dirty)
 	{
@@ -597,6 +640,9 @@ void Terrain::Tick(float deltaTime)
 		SetParameters(peaks);
 		SetParameters(temperature);
 		SetParameters(humidity);
+		SetParameters(contdensity);
+		SetParameters(density);
+		SetParameters(peakdensity);
 
 		voxels = 0;
 		ClearWorld();
@@ -649,23 +695,53 @@ void Terrain::Tick(float deltaTime)
 
 				if (watererosion && limit < 60)
 				{
-					int a = lerp((*world)[max(x - 4, 0)][z].first, (*world)[min(x + 4, 1023)][z].first, 0.5f);
-					int b = lerp((*world)[x][max(z - 4, 0)].first, (*world)[x][min(z + 4, 1023)].first, 0.5f);
-					limit = lerp(a, b, 0.5f);
+					int a = static_cast<int>(lerp((*world)[max(x - 4, 0)][z].first, (*world)[min(x + 4, 1023)][z].first, 0.5f));
+					int b = static_cast<int>(lerp((*world)[x][max(z - 4, 0)].first, (*world)[x][min(z + 4, 1023)].first, 0.5f));
+					limit = static_cast<int>(lerp(a, b, 0.5f));
 				}
 
 				const uint16_t color =
+					colorblend ?
 					LerpColors
 					(
 						LerpColors((*world)[max(x - 4, 0)][z].second, (*world)[min(x + 4, 1023)][z].second, 0.5f),
 						LerpColors((*world)[x][max(z - 4, 0)].second, (*world)[x][min(z + 4, 1023)].second, 0.5f),
 						0.5f
-					);
+					) : (*world)[x][z].second;
 
 				for (int y = limit; y > -1; y--)
 				{
+					float fx = static_cast<float>(x + terrainOffsetX),
+						fy = static_cast<float>(y), fz = static_cast<float>(z + terrainOffsetZ);
+					float contdensityNoise =
+						LerpPoints(contdensity, (contdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * contdensity.noise.GetNoise(fx, fz);
+					float densityNoise =
+						LerpPoints(density, (density.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * density.noise.GetNoise(fx, fz);
+					float peakdensityNoise =
+						LerpPoints(peakdensity, (peakdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peakdensity.noise.GetNoise(fx, fz);
+					
+
+
+					//float d = (contdensityNoise * 55.0f + densityNoise * 8.0f + peakdensityNoise) / 64.0f;
+					//float d3 = contdensity.noise.GetNoise(fx, fy, fz) * 10.0f;
+					//float d3 = (contdensity.noise.GetNoise(fx, fy, fz) * 10.0f + density.noise.GetNoise(fx, fy, fz) * 5.0f + peakdensity.noise.GetNoise(fx, fy, fz)) / 16.0f;
+
+					/*if (y > (limit - d * 20.0f - 20.0f) ||
+						y < (60.0f - d * 20.0f - 20.0f))
+						//d3 < -0.2f)
+					{
+						Plot(x, y, z, color);
+						voxels++;
+					}*/
+					
+					/*if (y > (limit - d * 20.0f - 20.0f) ||
+						y < (60.0f - d * 20.0f - 20.0f) ||
+						d3 < 0.0f)
+					{
+						continue;
+					}
 					Plot(x, y, z, color);
-					voxels++;
+					voxels++;*/
 				}
 			}
 		}
@@ -712,6 +788,9 @@ void Tmpl8::Terrain::Shutdown()
 	fwrite(&peaks, 1, sizeof(peaks), f);
 	fwrite(&temperature, 1, sizeof(temperature), f);
 	fwrite(&humidity, 1, sizeof(humidity), f);
+	fwrite(&contdensity, 1, sizeof(contdensity), f);
+	fwrite(&density, 1, sizeof(density), f);
+	fwrite(&peakdensity, 1, sizeof(peakdensity), f);
 	fclose(f);
 
 	f = fopen("camera.dat", "wb");

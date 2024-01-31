@@ -1268,6 +1268,7 @@ public:
 	virtual void MouseUp( int button ) = 0;
 	virtual void MouseDown( int button ) = 0;
 	virtual void MouseMove( int x, int y ) = 0;
+	virtual void MouseScroll( float x, float y ) = 0;
 	virtual void KeyUp( int key ) = 0;
 	virtual void KeyDown( int key ) = 0;
 	Surface* screen = 0;

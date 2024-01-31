@@ -326,6 +326,13 @@ void MousePosCallback( GLFWwindow* window, double x, double y )
 {
 	if (game) game->MouseMove( (int)x, (int)y );
 }
+void MouseScrollCallback(GLFWwindow* window, double x, double y)
+{
+	if (game)
+	{
+		game->MouseScroll(x, y);
+	}
+}
 void ErrorCallback( int error, const char* description )
 {
 	fprintf( stderr, "GLFW Error: %s\n", description );
@@ -351,6 +358,7 @@ int main(int argc, char* argv[])
 	glfwSetWindowFocusCallback( window, WindowFocusCallback );
 	glfwSetMouseButtonCallback( window, MouseButtonCallback );
 	glfwSetCursorPosCallback( window, MousePosCallback );
+	glfwSetScrollCallback( window, MouseScrollCallback );
 	glfwSetCharCallback( window, CharEventCallback );
 	// initialize GLAD
 	if (!gladLoadGLLoader( (GLADloadproc)glfwGetProcAddress )) FatalError( "gladLoadGLLoader failed." );

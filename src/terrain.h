@@ -75,7 +75,8 @@ namespace Tmpl8
 		// Input handling
 		void MouseUp(int button) { /* implement if you want to detect mouse button presses */ }
 		void MouseDown(int button) { /* implement if you want to detect mouse button presses */ }
-		void MouseMove(int x, int y) { mouseDelta.x = (x - mousePos.x); mouseDelta.y = (y - mousePos.y); mousePos.x = x, mousePos.y = y; }
+		void MouseMove(int x, int y) { mouseDelta.x = (x - mousePos.x); mouseDelta.y = (y - mousePos.y); mousePos.x = x; mousePos.y = y; }
+		void MouseScroll(float x, float y) { mouseScroll.x = x, mouseScroll.y = y; }
 		void KeyUp(int key) { /* implement if you want to handle keys */ }
 		void KeyDown(int key) { /* implement if you want to handle keys */ }
 		float3 CatmullRom(const float3& p0, const float3& p1, const float3& p2, const float3& p3)
@@ -91,6 +92,7 @@ namespace Tmpl8
 		// Mouse
 		int2 mousePos = {0, 0};
 		int2 mouseDelta = {0, 0};
+		float2 mouseScroll = {0, 0};
 
 		// Spline path data
 		int splineIndex = 1;
@@ -102,12 +104,14 @@ namespace Tmpl8
 		long long delay = 0;
 
 		// Terrain
-		bool dirty = true, waterfill = false, watererosion = false;
+		bool dirty = true, colorblend = true,
+			waterfill = false, watererosion = false;
 		int dimension = 0; // 0 = 2d, 1 = 3d
 		int presetTest = 0, paletteTest = 0;
 		int terrainX = 512, terrainZ = 512, terrainOffsetX = 0, terrainOffsetZ = 0;
 
 		Layer continentalness, erosion, peaks,
+			contdensity, density, peakdensity,
 			temperature, humidity;
 	};
 
