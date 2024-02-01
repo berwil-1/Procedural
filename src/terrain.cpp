@@ -481,9 +481,10 @@ void Terrain::HandleInterface()
 	ImGui::SameLine();
 	dirty |= ImGui::RadioButton("3D", &dimension, 1);
 
-	dirty |= ImGui::Checkbox("Colorblend", &colorblend);
-	dirty |= ImGui::Checkbox("Waterfill", &waterfill);
-	dirty |= ImGui::Checkbox("Water erosion", &watererosion);
+	dirty |= ImGui::Checkbox("Color blend", &colorBlend);
+	dirty |= ImGui::Checkbox("Water fill", &waterFill);
+	dirty |= ImGui::Checkbox("Water erosion", &waterErosion);
+	dirty |= ImGui::Checkbox("Cave inverted", &caveInverted);
 	ImGui::NewLine();
 
 	ImGui::SeparatorText("Terrain");
@@ -702,7 +703,7 @@ void Terrain::Tick(float deltaTime)
 													temperatureNoise, humidityNoise);
 				int limit = static_cast<int>(dimension ? elevationNoise : 1);
 
-				if (waterfill && elevationNoise < 60.0f)
+				if (waterFill && elevationNoise < 60.0f)
 				{
 					limit = 60;
 				}
@@ -717,7 +718,7 @@ void Terrain::Tick(float deltaTime)
 			{
 				int limit = (*world)[x][z].first;
 
-				if (watererosion && limit < 60)
+				if (waterErosion && limit < 60)
 				{
 					int a = static_cast<int>(lerp((*world)[max(x - 4, 0)][z].first, (*world)[min(x + 4, 1023)][z].first, 0.5f));
 					int b = static_cast<int>(lerp((*world)[x][max(z - 4, 0)].first, (*world)[x][min(z + 4, 1023)].first, 0.5f));
@@ -725,7 +726,7 @@ void Terrain::Tick(float deltaTime)
 				}
 
 				const uint16_t color =
-					colorblend ?
+					colorBlend ?
 					LerpColors
 					(
 						LerpColors((*world)[max(x - 4, 0)][z].second, (*world)[min(x + 4, 1023)][z].second, 0.5f),
@@ -743,38 +744,29 @@ void Terrain::Tick(float deltaTime)
 						LerpPoints(density, (density.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * density.noise.GetNoise(fx, fz);
 					float peakdensityNoise =
 						LerpPoints(peakdensity, (peakdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peakdensity.noise.GetNoise(fx, fz);
+
+					bool bounds = y < 40 + peakdensity.noise.GetNoise(fx, fz) * 4.0f &&
+						y > 36 + peakdensity.noise.GetNoise(fx + 1.0f, fz + 1.0f) * 4.0f;
+					bool noodle = abs(contdensity.noise.GetNoise(fx, fz) * 10.0f +
+						density.noise.GetNoise(fx, fy, fz) * 5.0f +
+						peakdensity.noise.GetNoise(fx, fy, fz)) < 0.5f;
 					
-					//float height = erosion.noise.GetNoise(fx, fz) * 5.0f;
-					float height = 2.0f;
-
-					if (y < limit + height - 20 && y > limit - height - 20 &&
-						abs(contdensityNoise * 5.0f + densityNoise) <
-						0.1f + peakdensityNoise * 0.05f)
+					if (bounds && noodle)
 					{
-						Plot(x, y, z, color);
-						voxels++;
-					}
+						if (caveInverted)
+						{
+							Plot(x, y, z, color);
+							voxels++;
+						}
 
-					//float d = (contdensityNoise * 55.0f + densityNoise * 8.0f + peakdensityNoise) / 64.0f;
-					//float d3 = contdensity.noise.GetNoise(fx, fy, fz) * 10.0f;
-					//float d3 = (contdensity.noise.GetNoise(fx, fy, fz) * 10.0f + density.noise.GetNoise(fx, fy, fz) * 5.0f + peakdensity.noise.GetNoise(fx, fy, fz)) / 16.0f;
-
-					/*if (y > (limit - d * 20.0f - 20.0f) ||
-						y < (60.0f - d * 20.0f - 20.0f))
-						//d3 < -0.2f)
-					{
-						Plot(x, y, z, color);
-						voxels++;
-					}*/
-					
-					/*if (y > (limit - d * 20.0f - 20.0f) ||
-						y < (60.0f - d * 20.0f - 20.0f) ||
-						d3 < 0.0f)
-					{
 						continue;
 					}
-					Plot(x, y, z, color);
-					voxels++;*/
+
+					if (!caveInverted)
+					{
+						Plot(x, y, z, color);
+						voxels++;
+					}
 				}
 			}
 		}

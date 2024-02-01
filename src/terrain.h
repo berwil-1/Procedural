@@ -104,8 +104,8 @@ namespace Tmpl8
 		long long delay = 0;
 
 		// Terrain
-		bool dirty = true, colorblend = true,
-			waterfill = false, watererosion = false;
+		bool dirty = true, colorBlend = true,
+			waterFill = false, waterErosion = false, caveInverted = false;
 		int dimension = 0; // 0 = 2d, 1 = 3d
 		int presetTest = 0, paletteTest = 0;
 		int terrainX = 512, terrainZ = 512, terrainOffsetX = 0, terrainOffsetZ = 0;
