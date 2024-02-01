@@ -672,11 +672,17 @@ void Terrain::Tick(float deltaTime)
 		voxels = 0;
 		ClearWorld();
 		auto start = std::chrono::system_clock::now();
-		
-#if 1
+	
+		// TODO: make 2d array of column struct, each colum contains its biome type and limit
 		std::array<std::array<std::pair<int, uint16_t>,
 			1024>, 1024>* world = new std::array<std::array<std::pair<int, uint16_t>, 1024>, 1024>();
 
+		// TODO: move lambda functions into actual header files
+		// TODO: don't store pair<limit, color> store the limit and biome id compressed into int16.
+		// TODO: multithread the execution
+		// TODO: make a voxel at coord function
+
+		/*
 		for (int x = 0; x < 1024; x++)
 		{
 			for (int z = 0; z < 1024; z++)
@@ -708,7 +714,8 @@ void Terrain::Tick(float deltaTime)
 					limit = 60;
 				}
 
-				(*world)[x][z] = { limit, elevationNoise < 60.0f ? (0x006 + (static_cast<int>(0x006 * elevationNoise / 60.0f) << 4)) : colors[biome]};
+				(*world)[x][z] = { limit, elevationNoise < 60.0f ?
+					(0x006 + (static_cast<int>(0x006 * elevationNoise / 60.0f) << 4)) : colors[biome]};
 			}
 		}
 
@@ -770,18 +777,9 @@ void Terrain::Tick(float deltaTime)
 				}
 			}
 		}
+		*/
 
 		delete world;
-#else
-		for (int x = 0; x < colors.size(); x++)
-		{
-			for (int y = 30; y > -1; y--)
-			{
-				Plot(x, y, 0, LerpColors(colors[x], 0xFFF, 1.0f - y / 30.0f));
-				voxels++;
-			}
-		}
-#endif
 
 		using namespace std::chrono;
 		auto end = system_clock::now();
