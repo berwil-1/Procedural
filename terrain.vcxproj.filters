@@ -37,6 +37,9 @@
     <ClCompile Include="src\world\biome.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="src\interface\interface.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="template\bluenoise.h">
@@ -109,6 +112,18 @@
       <Filter>Libraries\FastNoiseLite</Filter>
     </ClInclude>
     <ClInclude Include="src\math\random.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="src\interface\interface.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="src\world\layer.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="src\math\lerp.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="src\math\clamp.h">
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>

@@ -328,10 +328,7 @@ void MousePosCallback( GLFWwindow* window, double x, double y )
 }
 void MouseScrollCallback(GLFWwindow* window, double x, double y)
 {
-	if (game)
-	{
-		game->MouseScroll(x, y);
-	}
+	if (game) { game->MouseScroll((float)x, (float)y); }
 }
 void ErrorCallback( int error, const char* description )
 {

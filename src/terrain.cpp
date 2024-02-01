@@ -1,7 +1,10 @@
 #include "precomp.h"
 #include "terrain.h"
+#include "math/lerp.h"
+#include "world/chunk.h"
 #include "world/biome.h"
 #include "math/random.h"
+#include "interface/interface.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -283,184 +286,6 @@ void Terrain::HandleInput(float deltaTime)
 
 void Terrain::HandleInterface()
 {
-	constexpr std::array<const char*, 6> noiseItems =
-	{
-		"OpenSimplex2",
-		"OpenSimplex2S",
-		"Cellular",
-		"Perlin",
-		"ValueCubic",
-		"Value"
-	};
-
-	constexpr std::array<const char*, 3> rotationItems =
-	{
-		"None",
-		"ImproveXYPlanes",
-		"ImproveXZPlanes"
-	};
-
-	constexpr std::array<const char*, 6> fractalItems =
-	{
-		"None",
-		"FBm",
-		"Ridged",
-		"PingPong",
-		"DomainWarpProgressive",
-		"DomainWarpIndependent"
-	};
-
-	constexpr std::array<const char*, 4> distanceItems =
-	{
-		"Euclidean",
-		"EuclideanSq",
-		"Manhattan",
-		"Hybrid"
-	};
-
-	constexpr std::array<const char*, 7> returnItems =
-	{
-		"CellValue",
-		"Distance",
-		"Distance2",
-		"Distance2Add",
-		"Distance2Sub",
-		"Distance2Mul",
-		"Distance2Div"
-	};
-
-	constexpr std::array<const char*, 3> domainItems =
-	{
-		"OpenSimplex2",
-		"OpenSimplex2Reduced",
-		"BasicGrid"
-	};
-
-	auto ParameterSliderInt = [this](const char* label, int& value, int min, int max)
-	{
-		ImGui::PushStyleColor(ImGuiCol_Button, ImColor::HSV(0.3f, 0.6f, 0.6f).Value);
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColor::HSV(0.3f, 0.7f, 0.7f).Value);
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColor::HSV(0.3f, 0.8f, 0.8f).Value);
-
-		if (ImGui::Button("Random"))
-		{
-			value = abs(random()) % max;
-			dirty = true;
-		}
-
-		ImGui::PopStyleColor(3);
-		ImGui::SameLine();
-		ImGui::SliderInt(label, &value, min, max);
-		dirty |= ImGui::IsItemDeactivatedAfterEdit();
-	};
-	auto ParameterSliderFloat = [this](const char* label, float& value, float min, float max)
-	{
-		ImGui::PushStyleColor(ImGuiCol_Button, ImColor::HSV(0.3f, 0.6f, 0.6f).Value);
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColor::HSV(0.3f, 0.7f, 0.7f).Value);
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColor::HSV(0.3f, 0.8f, 0.8f).Value);
-
-		if (ImGui::Button("Random"))
-		{
-			int x = random();
-			value = x - max * static_cast<int>(x / max); // x % max;
-			dirty = true;
-		}
-
-		ImGui::PopStyleColor(3);
-		ImGui::SameLine();
-		ImGui::SliderFloat(label, &value, min, max, "%.5f");
-		dirty |= ImGui::IsItemDeactivatedAfterEdit();
-	};
-	auto ParameterCurveEditor = [this](Layer& layer)
-	{
-		int count = 70;
-		ImVec2 cursorFirst = ImGui::GetCursorPos();
-		ImVec2 cursorFirstScreen = ImGui::GetCursorScreenPos();
-
-		ImGui::PlotLines("Amplitude", layer.points.data(), 20, 0, NULL, 0.0f, 1.0f, ImVec2(0, 80));
-		ImVec2 cursorSecond = ImGui::GetCursorPos();
-		ImGui::SetCursorPos(cursorFirst);
-
-		static size_t held = -1;
-
-		if (held == -1 && ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsItemHovered())
-		{
-			size_t newIndex = -1;
-			float newLength = FLT_MAX;
-
-			for(size_t index = 0; index < layer.points.size(); index++)
-			{
-				const float point = layer.points[index];
-				ImVec2 mouse = ImGui::GetMousePos();
-				mouse.x -= 10;
-				mouse.y -= 5;
-
-				// Relative coordinates of mouse
-				float relativex = (mouse.x - cursorFirstScreen.x) /
-					(ImGui::GetItemRectSize().x - ImGui::CalcTextSize("Amplitude").x);
-				float relativey = (mouse.y - cursorFirstScreen.y) / ImGui::GetItemRectSize().y;
-
-				ImVec2 difference = ImVec2((relativex - (index / 20.0f)) * 2.0f, (1.0f - relativey) - point);
-				float length = sqrt(difference.x * difference.x + difference.y * difference.y);
-
-				if (length < newLength)
-				{
-					newIndex = index;
-					newLength = length;
-				}
-			}
-
-			if (newLength < 0.2f)
-			{
-				held = newIndex;
-			}
-		}
-
-		if (held != -1 && ImGui::IsItemHovered())
-		{
-			ImVec2 mouse = ImGui::GetMousePos();
-			ImVec2 relative = ImVec2((mouse.x - cursorFirstScreen.x) / (ImGui::GetItemRectSize().x - ImGui::CalcTextSize("Amplitude").x),
-				(mouse.y - cursorFirstScreen.y) / ImGui::GetItemRectSize().y);
-			layer.points[held] = 1.0f - relative.y;
-		}
-
-		if (held != -1 && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
-		{
-			held = -1;
-			dirty = true;
-		}
-
-		ImGui::SetCursorPos(cursorSecond);
-	};
-	auto LayerParameter = [this, ParameterSliderInt, ParameterSliderFloat, ParameterCurveEditor,
-		noiseItems, rotationItems, fractalItems, distanceItems, returnItems, domainItems](Layer& layer)
-	{
-		ParameterSliderInt("Seed", layer.seed, -INT_MIN / 2, INT_MAX / 2);
-		ParameterSliderFloat("Frequency", layer.frequency, 0, 0.1f);
-		ParameterSliderInt("Fractal Octaves", layer.fractalOctaves, 0, 8);
-		ParameterSliderFloat("Fractal Lacunarity", layer.fractalLacunarity, 0.0f, 8.0f);
-		ParameterSliderFloat("Fractal Gain", layer.fractalGain, 0.0f, 4.0f);
-		ParameterSliderFloat("Fractal Weighted Strength", layer.fractalWeightedStrength, 0.0f, 1.0f);
-		ParameterSliderFloat("Fractal Ping Pong Strength", layer.fractalPingPongStrength, 0.0f, 8.0f);
-		ParameterSliderFloat("Cellular Jitter", layer.cellularJitter, 0.0f, 1.0f);
-		ParameterSliderFloat("Domain Warp Amplitude", layer.domainAmplitude, 0.0f, 8.0f);
-
-		dirty |= ImGui::Combo("Noise", &layer.noiseIndex, noiseItems.data(),
-							  static_cast<int>(noiseItems.size()));
-		dirty |= ImGui::Combo("Rotation", &layer.rotationIndex, rotationItems.data(),
-							  static_cast<int>(rotationItems.size()));
-		dirty |= ImGui::Combo("Fractal", &layer.fractalIndex, fractalItems.data(),
-							  static_cast<int>(fractalItems.size()));
-		dirty |= ImGui::Combo("Distance", &layer.distanceIndex, distanceItems.data(),
-							  static_cast<int>(distanceItems.size()));
-		dirty |= ImGui::Combo("Return", &layer.returnIndex, returnItems.data(),
-							  static_cast<int>(returnItems.size()));
-		dirty |= ImGui::Combo("Domain", &layer.domainIndex, domainItems.data(),
-							  static_cast<int>(domainItems.size()));
-
-		ParameterCurveEditor(layer);
-	};
-
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
@@ -488,110 +313,41 @@ void Terrain::HandleInterface()
 	ImGui::NewLine();
 
 	ImGui::SeparatorText("Terrain");
-	ParameterSliderInt("Terrain X", terrainX, 0, 1024);
-	ParameterSliderInt("Terrain Z", terrainZ, 0, 1024);
-	ParameterSliderInt("Terrain Offset X", terrainOffsetX, -8192, 8192);
-	ParameterSliderInt("Terrain Offset Z", terrainOffsetZ, -8192, 8192);
+	dirty |= ParameterSliderInt("Terrain X", terrainX, 0, 1024);
+	dirty |= ParameterSliderInt("Terrain Z", terrainZ, 0, 1024);
+	dirty |= ParameterSliderInt("Terrain Offset X", terrainOffsetX, -8192, 8192);
+	dirty |= ParameterSliderInt("Terrain Offset Z", terrainOffsetZ, -8192, 8192);
 
-	if (ImGui::TreeNode("Elevation"))
+	auto TreeNodeWithLayerParameter = [this](const char* category, const char* subcategory, Layer& parameter) -> bool
 	{
-		if (ImGui::TreeNode("Continental"))
+		if (ImGui::TreeNode(category))
 		{
-			if (ImGui::TreeNode("Noise"))
+			if (ImGui::TreeNode(subcategory))
 			{
-				LayerParameter(continentalness);
+				if (ImGui::TreeNode("Noise"))
+				{
+					dirty |= LayerParameter(parameter);
+					ImGui::TreePop();
+				}
 				ImGui::TreePop();
 			}
-
 			ImGui::TreePop();
+			return true;
 		}
+		return false;
+	};
 
-		if (ImGui::TreeNode("Erosion"))
-		{
-			if (ImGui::TreeNode("Noise"))
-			{
-				LayerParameter(erosion);
-				ImGui::TreePop();
-			}
+	TreeNodeWithLayerParameter("Elevation", "Continental", continentalness);
+	TreeNodeWithLayerParameter("Elevation", "Erosion", erosion);
+	TreeNodeWithLayerParameter("Elevation", "Peaks", peaks);
 
-			ImGui::TreePop();
-		}
+	TreeNodeWithLayerParameter("Climate", "Temperature", temperature);
+	TreeNodeWithLayerParameter("Climate", "Humidity", humidity);
 
-		if (ImGui::TreeNode("Peaks"))
-		{
-			if (ImGui::TreeNode("Noise"))
-			{
-				LayerParameter(peaks);
-				ImGui::TreePop();
-			}
+	TreeNodeWithLayerParameter("Density", "Continental", contdensity);
+	TreeNodeWithLayerParameter("Density", "Density", density);
+	TreeNodeWithLayerParameter("Density", "Peaks", peakdensity);
 
-			ImGui::TreePop();
-		}
-		
-		ImGui::TreePop();
-	}
-	if (ImGui::TreeNode("Climate"))
-	{
-		if (ImGui::TreeNode("Temperature"))
-		{
-			if (ImGui::TreeNode("Noise"))
-			{
-				LayerParameter(temperature);
-				ImGui::TreePop();
-			}
-
-			ImGui::TreePop();
-		}
-		if (ImGui::TreeNode("Humidity"))
-		{
-			if (ImGui::TreeNode("Noise"))
-			{
-				LayerParameter(humidity);
-				ImGui::TreePop();
-			}
-
-			ImGui::TreePop();
-		}
-
-		ImGui::TreePop();
-	}
-	if (ImGui::TreeNode("Density"))
-	{
-		if (ImGui::TreeNode("Continental"))
-		{
-			if (ImGui::TreeNode("Noise"))
-			{
-				LayerParameter(contdensity);
-				ImGui::TreePop();
-			}
-
-			ImGui::TreePop();
-		}
-
-		if (ImGui::TreeNode("Density"))
-		{
-			if (ImGui::TreeNode("Noise"))
-			{
-				LayerParameter(density);
-				ImGui::TreePop();
-			}
-
-			ImGui::TreePop();
-		}
-
-		if (ImGui::TreeNode("Peaks"))
-		{
-			if (ImGui::TreeNode("Noise"))
-			{
-				LayerParameter(peakdensity);
-				ImGui::TreePop();
-			}
-
-			ImGui::TreePop();
-		}
-
-		ImGui::TreePop();
-	}
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -600,61 +356,6 @@ void Terrain::HandleInterface()
 void Terrain::Tick(float deltaTime)
 {
 	static size_t ticks = 0;
-
-	auto SetParameters = [this](Layer& layer)
-	{
-		layer.noise.SetSeed(layer.seed);
-		layer.noise.SetFrequency(layer.frequency);
-		layer.noise.SetNoiseType(static_cast<FastNoiseLite::NoiseType>(layer.noiseIndex));
-		layer.noise.SetRotationType3D(static_cast<FastNoiseLite::RotationType3D>(layer.rotationIndex));
-		layer.noise.SetFractalType(static_cast<FastNoiseLite::FractalType>(layer.fractalIndex));
-		layer.noise.SetFractalOctaves(layer.fractalOctaves);
-		layer.noise.SetFractalLacunarity(layer.fractalLacunarity);
-		layer.noise.SetFractalGain(layer.fractalGain);
-		layer.noise.SetFractalWeightedStrength(layer.fractalWeightedStrength);
-		layer.noise.SetFractalPingPongStrength(layer.fractalPingPongStrength);
-		layer.noise.SetCellularDistanceFunction(static_cast<FastNoiseLite::CellularDistanceFunction>(layer.distanceIndex));
-		layer.noise.SetCellularReturnType(static_cast<FastNoiseLite::CellularReturnType>(layer.returnIndex));
-		layer.noise.SetCellularJitter(layer.cellularJitter);
-		layer.noise.SetDomainWarpType(static_cast<FastNoiseLite::DomainWarpType>(layer.domainIndex));
-		layer.noise.SetDomainWarpAmp(layer.domainAmplitude);
-	};
-	auto LerpPoints = [](Layer& layer, float x) -> float
-	{
-		std::array<float, 20>& points = layer.points;
-		size_t lower = 0, upper = 19;
-
-		for (size_t i = 0; i < points.size() - 1; i++)
-		{
-			// Is x within bounds
-			if (x >= (i / 20.0f) && x < (i + 1) / 20.0f)
-			{
-				lower = i;
-				upper = i + 1;
-				break;
-			}
-		}
-
-		float t = (x - (lower / 20.0f)) / ((upper / 20.0f) - (lower / 20.0f));
-		return std::lerp(points[lower], points[upper], t);
-	};
-	auto LerpColors = [](uint16_t a, uint16_t b, float t) -> uint16_t
-	{
-		uint16_t ra = (a >> 8);
-		uint16_t rb = (b >> 8);
-		uint16_t rl = static_cast<uint16_t>(lerp(ra, rb, t));
-
-		uint16_t ga = (a >> 4) & 15;
-		uint16_t gb = (b >> 4) & 15;
-		uint16_t gl = static_cast<uint16_t>(lerp(ga, gb, t));
-
-		uint16_t ba = a & 15;
-		uint16_t bb = b & 15;
-		uint16_t bl = static_cast<uint16_t>(lerp(ba, bb, t));
-
-		return (rl << 8) | (gl << 4) | bl;
-	};
-
 	HandleInput(deltaTime);
 
 	// Gather noise data
@@ -673,14 +374,75 @@ void Terrain::Tick(float deltaTime)
 		ClearWorld();
 		auto start = std::chrono::system_clock::now();
 	
+		std::vector<Chunk> chunks;
+		chunks.reserve(4096);
+
+		for (size_t i = 0; i < 4096; i++)
+		{
+			chunks.emplace_back(static_cast<int8_t>(i / 64), static_cast<int8_t>(i % 64));
+		}
+
+		for (Chunk& chunk : chunks)
+		{
+			for (size_t x = 0; x < 64; x++)
+			{
+				for (size_t z = 0; z < 64; z++)
+				{
+					float fx = static_cast<float>(x + terrainOffsetX),
+						fz = static_cast<float>(z + terrainOffsetZ);
+
+					float continentalnessNoise =
+						LerpPoints(continentalness, (continentalness.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * continentalness.noise.GetNoise(fx, fz);
+					float erosionNoise =
+						LerpPoints(erosion, (erosion.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * erosion.noise.GetNoise(fx, fz);
+					float peaksNoise =
+						LerpPoints(peaks, (peaks.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peaks.noise.GetNoise(fx, fz);
+
+					float elevationNoise = clamp(((continentalnessNoise * 200.0f +
+												 (peaksNoise + 0.3f) * 40.0f) * erosionNoise + 120.0f) / 2.0f, 0.0f, 240.0f);
+					float temperatureNoise =
+						temperature.noise.GetNoise(fx, fz);
+					float humidityNoise =
+						0.1f * powf(2, -10.0f * powf(x / 512.0f - 1.0f, 2.0f)) +
+						humidity.noise.GetNoise(fx, fz);
+
+					float contdensityNoise =
+						LerpPoints(contdensity, (contdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * contdensity.noise.GetNoise(fx, fz);
+					float densityNoise =
+						LerpPoints(density, (density.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * density.noise.GetNoise(fx, fz);
+					float peakdensityNoise =
+						LerpPoints(peakdensity, (peakdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peakdensity.noise.GetNoise(fx, fz);
+
+					chunk.columns[z + x * CHUNK_WIDTH].noise =
+					{
+						continentalnessNoise,
+						erosionNoise,
+						peaksNoise,
+						elevationNoise,
+						temperatureNoise,
+						humidityNoise,
+						contdensityNoise,
+						densityNoise,
+						peakdensityNoise
+					};
+				}
+			}
+
+			//ChunkGenerateNoise(chunk, continentalness, erosion, peaks, temperature, humidity, contdensity, density, peakdensity, terrainOffsetX, terrainOffsetZ);
+		}
+
+
+
 		// TODO: make 2d array of column struct, each colum contains its biome type and limit
-		std::array<std::array<std::pair<int, uint16_t>,
-			1024>, 1024>* world = new std::array<std::array<std::pair<int, uint16_t>, 1024>, 1024>();
+		//std::array<std::array<std::pair<int, uint16_t>,
+		//	1024>, 1024>* world = new std::array<std::array<std::pair<int, uint16_t>, 1024>, 1024>();
 
 		// TODO: move lambda functions into actual header files
 		// TODO: don't store pair<limit, color> store the limit and biome id compressed into int16.
 		// TODO: multithread the execution
 		// TODO: make a voxel at coord function
+
+
 
 		/*
 		for (int x = 0; x < 1024; x++)
@@ -745,6 +507,7 @@ void Terrain::Tick(float deltaTime)
 				{
 					float fx = static_cast<float>(x + terrainOffsetX),
 						fy = static_cast<float>(y), fz = static_cast<float>(z + terrainOffsetZ);
+				// TODO: move noise out?
 					float contdensityNoise =
 						LerpPoints(contdensity, (contdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * contdensity.noise.GetNoise(fx, fz);
 					float densityNoise =
@@ -779,7 +542,7 @@ void Terrain::Tick(float deltaTime)
 		}
 		*/
 
-		delete world;
+		//delete world;
 
 		using namespace std::chrono;
 		auto end = system_clock::now();
@@ -791,7 +554,7 @@ void Terrain::Tick(float deltaTime)
 	ticks++;
 }
 
-void Tmpl8::Terrain::Predraw()
+void Terrain::Predraw()
 {
 	// Empty
 }
@@ -801,7 +564,7 @@ void Terrain::Postdraw()
 	HandleInterface();
 }
 
-void Tmpl8::Terrain::Shutdown()
+void Terrain::Shutdown()
 {
 	FILE* f;
 
