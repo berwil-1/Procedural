@@ -21,6 +21,7 @@ void Terrain::Init()
 
 	// Restore camera, if possible
 	FILE* f;
+
 	f = fopen("camera.dat", "rb");
 	if (f)
 	{
@@ -132,11 +133,12 @@ void Terrain::HandleInput(float deltaTime)
 #else
 	// Playback of recorded spline path
 	// TODO: add this to imgui
-	const size_t N = splinePath.size();
-	PathPoint p0 = splinePath[(pathPt + (N - 1)) % N], p1 = splinePath[pathPt];
-	PathPoint p2 = splinePath[(pathPt + 1) % N], p3 = splinePath[(pathPt + 2) % N];
-	LookAt(CatmullRom(p0.O, p1.O, p2.O, p3.O), CatmullRom(p0.D, p1.D, p2.D, p3.D));
-	if ((t += deltaTime * 0.0005f) > 1) t -= 1, pathPt = (pathPt + 1) % N;
+	const size_t N = spline.size();
+	CameraPoint p0 = spline[(splineIndex + (N - 1)) % N], p1 = spline[splineIndex];
+	CameraPoint p2 = spline[(splineIndex + 1) % N], p3 = spline[(splineIndex + 2) % N];
+	LookAt(CatmullRom(p0.cameraPosition, p1.cameraPosition, p2.cameraPosition, p3.cameraPosition),
+		   CatmullRom(p0.cameraDirection, p1.cameraDirection, p2.cameraDirection, p3.cameraDirection));
+	if ((splineLerp += deltaTime * 0.0005f) > 1) splineLerp -= 1, splineIndex = (splineIndex + 1) % N;
 #endif
 
 	mouseDelta = { 0, 0 };
@@ -159,6 +161,92 @@ void Terrain::HandleInterface()
 	parameters.dirty |= ImGui::Checkbox("Water fill", &parameters.waterFill);
 	parameters.dirty |= ImGui::Checkbox("Water erosion", &parameters.waterErosion);
 	parameters.dirty |= ImGui::Checkbox("Cave inverted", &parameters.caveInverted);
+
+	std::vector<const char*> items =
+	{
+		"None", "Grassland", "Desert", "Ocean"
+	};
+
+	parameters.dirty |= ImGui::Combo("Preset",
+		&parameters.presetIndex, items.data(),
+			static_cast<int>(items.size()));
+	switch (parameters.presetIndex)
+	{
+		FILE* f;
+
+		case 1:
+		{
+			f = fopen("layer_grassland.dat", "rb");
+
+			if (f)
+			{
+				fread(&continentalness, 1, sizeof(continentalness), f);
+				fread(&erosion, 1, sizeof(erosion), f);
+				fread(&peaks, 1, sizeof(peaks), f);
+				fread(&temperature, 1, sizeof(temperature), f);
+				fread(&humidity, 1, sizeof(humidity), f);
+				fread(&contdensity, 1, sizeof(contdensity), f);
+				fread(&density, 1, sizeof(density), f);
+				fread(&peakdensity, 1, sizeof(peakdensity), f);
+				fclose(f);
+			}
+
+			parameters.dirty = true;
+			break;
+		}
+
+		case 2:
+		{
+			f = fopen("layer_desert.dat", "rb");
+
+			if (f)
+			{
+				fread(&continentalness, 1, sizeof(continentalness), f);
+				fread(&erosion, 1, sizeof(erosion), f);
+				fread(&peaks, 1, sizeof(peaks), f);
+				fread(&temperature, 1, sizeof(temperature), f);
+				fread(&humidity, 1, sizeof(humidity), f);
+				fread(&contdensity, 1, sizeof(contdensity), f);
+				fread(&density, 1, sizeof(density), f);
+				fread(&peakdensity, 1, sizeof(peakdensity), f);
+				fclose(f);
+			}
+
+			parameters.dirty = true;
+			break;
+		}
+
+		case 3:
+		{
+			f = fopen("layer_ocean.dat", "rb");
+
+			if (f)
+			{
+				fread(&continentalness, 1, sizeof(continentalness), f);
+				fread(&erosion, 1, sizeof(erosion), f);
+				fread(&peaks, 1, sizeof(peaks), f);
+				fread(&temperature, 1, sizeof(temperature), f);
+				fread(&humidity, 1, sizeof(humidity), f);
+				fread(&contdensity, 1, sizeof(contdensity), f);
+				fread(&density, 1, sizeof(density), f);
+				fread(&peakdensity, 1, sizeof(peakdensity), f);
+				fclose(f);
+			}
+
+			parameters.dirty = true;
+			break;
+		}
+	}
+
+	items =
+	{
+		"All", "Continentalness", "Erosion", "Peaks", "Humidity",
+		"Density Continental", "Density", "Density Peaks"
+	};
+
+	parameters.dirty |= ImGui::Combo("Layer",
+		&parameters.layerIndex, items.data(),
+			static_cast<int>(items.size()));
 	ImGui::NewLine();
 
 	ImGui::SeparatorText("Terrain");
@@ -166,25 +254,6 @@ void Terrain::HandleInterface()
 	parameters.dirty |= ParameterSliderInt("Terrain Z", parameters.terrainZ, 0, 1024);
 	parameters.dirty |= ParameterSliderInt("Terrain Offset X", parameters.terrainOffsetX, -8192, 8192);
 	parameters.dirty |= ParameterSliderInt("Terrain Offset Z", parameters.terrainOffsetZ, -8192, 8192);
-
-	std::vector<const char*> items =
-	{
-		"All", "Continentalness", "Erosion", "Peaks", "Humidity",
-		"Density Continental", "Density", "Density Peaks"
-	};
-
-	parameters.dirty |= ImGui::Combo("Layer", &parameters.layerIndex, items.data(),
-		static_cast<int>(items.size()));
-
-	/*std::vector<const char*> items;
-	items = { "All", "Continentalness", "Erosion", "Peaks", "Temperature", "Humidity" };
-	parameters.dirty |= ImGui::Combo("Preset", &parameters.presetTest, items.data(),
-		static_cast<int>(items.size()));*/
-
-		/*items = {"None"};
-		for (const Biome& biome : biomes) items.push_back(biome.name);
-		parameters.dirty |= ImGui::Combo("Palette", &paletteTest, items.data(),
-			static_cast<int>(items.size()));*/
 
 	if (ImGui::TreeNode("Elevation"))
 	{
@@ -308,9 +377,10 @@ void static Generate(const Columns* world, const Layer& contdensity, const Layer
 				color = LerpColors(nearby, color, 0.5f);
 			}
 
-			if (!parameters.layerIndex)
+			if (parameters.layerIndex)
 			{
-				color = 
+				int f = max(static_cast<int>(0x00f * level / 60.0f), 0x001);
+				color = (f << 8) | (f << 4) | f;
 			}
 
 			/*if (waterErosion && level < 60)
@@ -331,13 +401,20 @@ void static Generate(const Columns* world, const Layer& contdensity, const Layer
 
 			const float fx = static_cast<float>(x + 0),
 				fz = static_cast<float>(z + 0);
-
 			float contdensityNoise =
 				LerpPoints(contdensity, (contdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * contdensity.noise.GetNoise(fx, fz);
 			float peakdensityNoise =
 				LerpPoints(peakdensity, (peakdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peakdensity.noise.GetNoise(fx, fz);
 
-			for (int y = level; y > -1; y--)
+			if (parameters.waterFill&& level < 61)
+			{
+				for (int y = 60; y > parameters.dimension ? level : 0; y--)
+				{
+					Plot(x, y, z, color);
+				}
+			}
+
+			for (int y = parameters.dimension ? level : 0; y > -1; y--)
 			{
 				float fy = static_cast<float>(y);
 
@@ -346,6 +423,16 @@ void static Generate(const Columns* world, const Layer& contdensity, const Layer
 				bool noodle = abs(contdensityNoise * 10.0f +
 					density.noise.GetNoise(fx, fy, fz) * 5.0f +
 					peakdensity.noise.GetNoise(fx, fy, fz)) < 0.5f;
+
+				if (parameters.dimension && y < level - 6)
+				{
+					color = colors[13];
+				}
+
+				if (parameters.dimension && y < level - 16)
+				{
+					color = colors[14];
+				}
 
 				if (level > 60 && bounds && noodle)
 				{
@@ -371,6 +458,17 @@ void Terrain::Tick(float deltaTime)
 	static size_t ticks = 0;
 	HandleInput(deltaTime);
 
+	const std::array<Layer, 7> layers =
+	{
+		continentalness,
+		erosion,
+		peaks,
+		humidity,
+		contdensity,
+		density,
+		peakdensity
+	};
+
 	// Gather noise data
 	if (parameters.dirty)
 	{
@@ -386,9 +484,6 @@ void Terrain::Tick(float deltaTime)
 		ClearWorld();
 		auto start = std::chrono::system_clock::now();
 
-		// TODO: rework presets into pre defined sets of parameters
-		// TODO: move preset logic into layer and make it work again
-		// TODO: camera lerp
 		// TODO: add dirt and stone underground
 		// TODO: document and write presentation
 
@@ -416,7 +511,14 @@ void Terrain::Tick(float deltaTime)
 					humidity.noise.GetNoise(fx, fz);
 
 				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f, humidityNoise);
-				uint8_t level = static_cast<uint8_t>(parameters.dimension ? elevationNoise : 1);
+
+				uint8_t level = static_cast<uint8_t>(elevationNoise);
+				//level = (parameters.waterFill && elevationNoise < 60.0f) ? 60 : level;
+				level = parameters.layerIndex ?
+					static_cast<uint8_t>((layers[parameters.layerIndex - 1].
+						noise.GetNoise(fx, fz) + 1.0f) * 30.0f) : level;
+
+				/*uint8_t level = static_cast<uint8_t>(parameters.dimension ? elevationNoise : 1);
 
 				// Fill air with water
 				if (parameters.waterFill &&
@@ -425,6 +527,12 @@ void Terrain::Tick(float deltaTime)
 				{
 					level = 60;
 				}
+
+				if (parameters.layerIndex)
+				{
+					level = static_cast<uint8_t>(layers[parameters.layerIndex - 1].
+						noise.GetNoise(fx, fz));
+				}*/
 
 				// Not entirely accurate,
 				// but much easier

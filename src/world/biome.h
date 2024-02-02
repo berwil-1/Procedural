@@ -44,8 +44,8 @@ constexpr std::array<uint16_t, 15> colors =
 	0x263,							// 10
 	0x654,							// 11
 	0x066,							// 12
-	0xf00,							// 13 (dirt)
-	0xaaa							// 14 (stone)
+	0x321,							// 13 (dirt)
+	0x555							// 14 (stone)
 };
 
 constexpr std::array<Biome, 13> biomes =
