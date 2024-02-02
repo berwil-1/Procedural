@@ -191,11 +191,6 @@
       <DebugInformationFormat Condition="'$(Configuration)|$(Platform)'=='ReleaseWithDebugInfo|x64'">ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <ClCompile Include="src\world\biome.cpp" />
-    <ClCompile Include="src\world\chunk.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseWithDebugInfo|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="template\template.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precomp.h</PrecompiledHeaderFile>
@@ -229,7 +224,6 @@
     <ClInclude Include="src\math\random.h" />
     <ClInclude Include="src\terrain.h" />
     <ClInclude Include="src\world\biome.h" />
-    <ClInclude Include="src\world\chunk.h" />
     <ClInclude Include="src\world\layer.h" />
     <ClInclude Include="template\bluenoise.h" />
     <ClInclude Include="template\common.h" />

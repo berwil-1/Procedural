@@ -1,13 +1,34 @@
 #pragma once
+
 #include "src/world/layer.h"
 #include "lib/imgui/imgui.h"
 
+// #define MULTI_THREADING
+
 namespace Tmpl8
 {
+	constexpr int THREAD_LIMIT = 32;
 
 	struct CameraPoint
 	{
 		float3 cameraPosition, cameraDirection;
+	};
+
+	struct alignas(2) Column
+	{
+		uint8_t level, biome;
+	};
+	typedef std::array<std::array<Column, 1024>, 1024> Columns;
+
+	struct Parameters
+	{
+		bool dirty = true, blend = true,
+			waterFill = false, waterErosion = false,
+			caveInverted = false;
+
+		int dimension = 0; // 0 = 2d, 1 = 3d
+		int presetIndex = 0, layerIndex = 0;
+		int terrainX = 512, terrainZ = 512, terrainOffsetX = 0, terrainOffsetZ = 0;
 	};
 
 	class Terrain : public Game
@@ -55,11 +76,7 @@ namespace Tmpl8
 		long long delay = 0;
 
 		// Terrain
-		bool dirty = true, colorBlend = true,
-			waterFill = false, waterErosion = false, caveInverted = false;
-		int dimension = 0; // 0 = 2d, 1 = 3d
-		int presetTest = 0, paletteTest = 0;
-		int terrainX = 512, terrainZ = 512, terrainOffsetX = 0, terrainOffsetZ = 0;
+		Parameters parameters;
 
 		Layer continentalness, erosion, peaks,
 			contdensity, density, peakdensity,

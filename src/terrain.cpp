@@ -1,7 +1,6 @@
 #include "precomp.h"
 #include "terrain.h"
 #include "math/lerp.h"
-#include "world/chunk.h"
 #include "world/biome.h"
 #include "math/random.h"
 #include "interface/interface.h"
@@ -65,146 +64,6 @@ void Terrain::Init()
 	// Setup Platform/Renderer backends
 	ImGui_ImplGlfw_InitForOpenGL(GetGlfwWindow(), true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
 	ImGui_ImplOpenGL3_Init();
-
-#if 1
-	continentalness.points =
-	{
-		1.0f,
-		0.3f,
-		0.05f,
-		0.05f,
-		0.05f,
-		0.07f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.9f,
-		0.91f,
-		0.92f,
-		0.92f,
-		0.92f,
-		0.93f,
-		0.94f,
-		0.96f,
-		0.98f,
-		0.99f,
-		1.0f
-	};
-
-	erosion.points =
-	{
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f,
-		1.0f
-
-		/*1.0f,
-		0.8f,
-		0.7f,
-		0.65f,
-		0.64f,
-		0.6f,
-		0.58f,
-		0.6f,
-		0.66f,
-		0.42f,
-		0.3f,
-		0.22f,
-		0.22f,
-		0.21f,
-		0.20f,
-		0.4f,
-		0.5f,
-		0.5f,
-		0.2f,
-		0.1f*/
-	};
-
-	peaks.points =
-	{
-		/*0.1f,
-		0.15f,
-		0.2f,
-		0.27f,
-		0.29f,
-		0.3f,
-		0.33f,
-		0.36f,
-		0.44f,
-		0.5f,
-		0.59f,
-		0.64f,
-		0.69f,
-		0.73f,
-		0.76f,
-		0.8f,
-		0.87f,
-		0.96f,
-		0.99f,
-		1.0f*/
-
-		1.0f,
-		0.95f,
-		0.9f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.59f,
-		0.64f,
-		0.69f,
-		0.73f,
-		0.76f,
-		0.8f,
-		0.87f,
-		0.96f,
-		0.99f,
-		1.0f
-	};
-
-	contdensity.points =
-	{
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f,
-		0.5f
-	};
-#endif
 }
 
 void Terrain::HandleInput(float deltaTime)
@@ -292,65 +151,219 @@ void Terrain::HandleInterface()
 
 	ImGui::Text("Voxels (%.2f mv)		Delay (%lld ms)", voxels / 1000000.0f, delay);
 
-	std::vector<const char*> items;
-	items = { "All", "Continentalness", "Erosion", "Peaks", "Temperature", "Humidity" };
-	dirty |= ImGui::Combo("Preset", &presetTest, items.data(),
-		static_cast<int>(items.size()));
-
-	items = { "None" };
-	for (const Biome& biome : biomes) items.push_back(biome.name);
-	dirty |= ImGui::Combo("Palette", &paletteTest, items.data(),
-		static_cast<int>(items.size()));
-
-	dirty |= ImGui::RadioButton("2D", &dimension, 0);
+	parameters.dirty |= ImGui::RadioButton("2D", &parameters.dimension, 0);
 	ImGui::SameLine();
-	dirty |= ImGui::RadioButton("3D", &dimension, 1);
+	parameters.dirty |= ImGui::RadioButton("3D", &parameters.dimension, 1);
 
-	dirty |= ImGui::Checkbox("Color blend", &colorBlend);
-	dirty |= ImGui::Checkbox("Water fill", &waterFill);
-	dirty |= ImGui::Checkbox("Water erosion", &waterErosion);
-	dirty |= ImGui::Checkbox("Cave inverted", &caveInverted);
+	parameters.dirty |= ImGui::Checkbox("Color blend", &parameters.blend);
+	parameters.dirty |= ImGui::Checkbox("Water fill", &parameters.waterFill);
+	parameters.dirty |= ImGui::Checkbox("Water erosion", &parameters.waterErosion);
+	parameters.dirty |= ImGui::Checkbox("Cave inverted", &parameters.caveInverted);
 	ImGui::NewLine();
 
 	ImGui::SeparatorText("Terrain");
-	dirty |= ParameterSliderInt("Terrain X", terrainX, 0, 1024);
-	dirty |= ParameterSliderInt("Terrain Z", terrainZ, 0, 1024);
-	dirty |= ParameterSliderInt("Terrain Offset X", terrainOffsetX, -8192, 8192);
-	dirty |= ParameterSliderInt("Terrain Offset Z", terrainOffsetZ, -8192, 8192);
+	parameters.dirty |= ParameterSliderInt("Terrain X", parameters.terrainX, 0, 1024);
+	parameters.dirty |= ParameterSliderInt("Terrain Z", parameters.terrainZ, 0, 1024);
+	parameters.dirty |= ParameterSliderInt("Terrain Offset X", parameters.terrainOffsetX, -8192, 8192);
+	parameters.dirty |= ParameterSliderInt("Terrain Offset Z", parameters.terrainOffsetZ, -8192, 8192);
 
-	auto TreeNodeWithLayerParameter = [this](const char* category, const char* subcategory, Layer& parameter) -> bool
+	std::vector<const char*> items =
 	{
-		if (ImGui::TreeNode(category))
-		{
-			if (ImGui::TreeNode(subcategory))
-			{
-				if (ImGui::TreeNode("Noise"))
-				{
-					dirty |= LayerParameter(parameter);
-					ImGui::TreePop();
-				}
-				ImGui::TreePop();
-			}
-			ImGui::TreePop();
-			return true;
-		}
-		return false;
+		"All", "Continentalness", "Erosion", "Peaks", "Humidity",
+		"Density Continental", "Density", "Density Peaks"
 	};
 
-	TreeNodeWithLayerParameter("Elevation", "Continental", continentalness);
-	TreeNodeWithLayerParameter("Elevation", "Erosion", erosion);
-	TreeNodeWithLayerParameter("Elevation", "Peaks", peaks);
+	parameters.dirty |= ImGui::Combo("Layer", &parameters.layerIndex, items.data(),
+		static_cast<int>(items.size()));
 
-	TreeNodeWithLayerParameter("Climate", "Temperature", temperature);
-	TreeNodeWithLayerParameter("Climate", "Humidity", humidity);
+	/*std::vector<const char*> items;
+	items = { "All", "Continentalness", "Erosion", "Peaks", "Temperature", "Humidity" };
+	parameters.dirty |= ImGui::Combo("Preset", &parameters.presetTest, items.data(),
+		static_cast<int>(items.size()));*/
 
-	TreeNodeWithLayerParameter("Density", "Continental", contdensity);
-	TreeNodeWithLayerParameter("Density", "Density", density);
-	TreeNodeWithLayerParameter("Density", "Peaks", peakdensity);
+		/*items = {"None"};
+		for (const Biome& biome : biomes) items.push_back(biome.name);
+		parameters.dirty |= ImGui::Combo("Palette", &paletteTest, items.data(),
+			static_cast<int>(items.size()));*/
 
+	if (ImGui::TreeNode("Elevation"))
+	{
+		if (ImGui::TreeNode("Continental"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				parameters.dirty |= LayerParameter(continentalness);
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Erosion"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				parameters.dirty |= LayerParameter(erosion);
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Peaks"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				parameters.dirty |= LayerParameter(peaks);
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNode("Climate"))
+	{
+		if (ImGui::TreeNode("Humidity"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				parameters.dirty |= LayerParameter(humidity);
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNode("Density"))
+	{
+		if (ImGui::TreeNode("Continental"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				parameters.dirty |= LayerParameter(contdensity);
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Density"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				parameters.dirty |= LayerParameter(density);
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Peaks"))
+		{
+			if (ImGui::TreeNode("Noise"))
+			{
+				parameters.dirty |= LayerParameter(peakdensity);
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::TreePop();
+	}
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void static Generate(const Columns* world, const Layer& contdensity, const Layer& density, const Layer& peakdensity, const Parameters& parameters, const int thread)
+{
+	int section = parameters.terrainX / THREAD_LIMIT;
+	int start = thread * section;
+	int end = start + section;
+
+	for (int x = start; x < end; x++)
+	{
+		for (int z = 0; z < parameters.terrainZ; z++)
+		{
+			const Column& column = (*world)[x][z];
+			const uint8_t level = column.level;
+
+			const uint16_t water = (0x006 + (static_cast<int>(0x006 * level / 60.0f) << 4));
+			uint16_t color = (level < 61 && parameters.dimension) ? water : colors[column.biome];
+
+			if (parameters.blend)
+			{
+				uint16_t nearby = LerpColors
+				(
+					LerpColors(colors[(*world)[max(x - 4, 0)][z].biome], colors[(*world)[min(x + 4, 1023)][z].biome], 0.5f),
+					LerpColors(colors[(*world)[x][max(z - 4, 0)].biome], colors[(*world)[x][min(z + 4, 1023)].biome], 0.5f),
+					0.5f
+				);
+
+				color = LerpColors(nearby, color, 0.5f);
+			}
+
+			if (!parameters.layerIndex)
+			{
+				color = 
+			}
+
+			/*if (waterErosion && level < 60)
+			{
+				int a = static_cast<int>(lerp((*world)[max(x - 4, 0)][z].first, (*world)[min(x + 4, 1023)][z].first, 0.5f));
+				int b = static_cast<int>(lerp((*world)[x][max(z - 4, 0)].first, (*world)[x][min(z + 4, 1023)].first, 0.5f));
+				level = static_cast<int>(lerp(a, b, 0.5f));
+			}*/
+
+			/*const uint16_t color =
+			colorBlend ?
+			LerpColors
+			(
+				LerpColors((*world)[max(x - 4, 0)][z].second, (*world)[min(x + 4, 1023)][z].second, 0.5f),
+				LerpColors((*world)[x][max(z - 4, 0)].second, (*world)[x][min(z + 4, 1023)].second, 0.5f),
+				0.5f
+			) : (*world)[x][z].second;*/
+
+			const float fx = static_cast<float>(x + 0),
+				fz = static_cast<float>(z + 0);
+
+			float contdensityNoise =
+				LerpPoints(contdensity, (contdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * contdensity.noise.GetNoise(fx, fz);
+			float peakdensityNoise =
+				LerpPoints(peakdensity, (peakdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peakdensity.noise.GetNoise(fx, fz);
+
+			for (int y = level; y > -1; y--)
+			{
+				float fy = static_cast<float>(y);
+
+				bool bounds = y < 40 + peakdensityNoise * 4.0f &&
+					y > 36 + peakdensityNoise * 4.0f;
+				bool noodle = abs(contdensityNoise * 10.0f +
+					density.noise.GetNoise(fx, fy, fz) * 5.0f +
+					peakdensity.noise.GetNoise(fx, fy, fz)) < 0.5f;
+
+				if (level > 60 && bounds && noodle)
+				{
+					if (parameters.caveInverted)
+					{
+						Plot(x, y, z, color);
+					}
+
+					continue;
+				}
+
+				if (!parameters.caveInverted)
+				{
+					Plot(x, y, z, color);
+				}
+			}
+		}
+	}
 }
 
 void Terrain::Tick(float deltaTime)
@@ -359,12 +372,11 @@ void Terrain::Tick(float deltaTime)
 	HandleInput(deltaTime);
 
 	// Gather noise data
-	if (dirty)
+	if (parameters.dirty)
 	{
 		SetParameters(continentalness);
 		SetParameters(erosion);
 		SetParameters(peaks);
-		SetParameters(temperature);
 		SetParameters(humidity);
 		SetParameters(contdensity);
 		SetParameters(density);
@@ -373,84 +385,22 @@ void Terrain::Tick(float deltaTime)
 		voxels = 0;
 		ClearWorld();
 		auto start = std::chrono::system_clock::now();
-	
-		std::vector<Chunk> chunks;
-		chunks.reserve(4096);
 
-		for (size_t i = 0; i < 4096; i++)
-		{
-			chunks.emplace_back(static_cast<int8_t>(i / 64), static_cast<int8_t>(i % 64));
-		}
+		// TODO: rework presets into pre defined sets of parameters
+		// TODO: move preset logic into layer and make it work again
+		// TODO: camera lerp
+		// TODO: add dirt and stone underground
+		// TODO: document and write presentation
 
-		for (Chunk& chunk : chunks)
-		{
-			for (size_t x = 0; x < 64; x++)
-			{
-				for (size_t z = 0; z < 64; z++)
-				{
-					float fx = static_cast<float>(x + terrainOffsetX),
-						fz = static_cast<float>(z + terrainOffsetZ);
+		// Height and biome type in a 2d array.
+		Columns* world = new Columns;
 
-					float continentalnessNoise =
-						LerpPoints(continentalness, (continentalness.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * continentalness.noise.GetNoise(fx, fz);
-					float erosionNoise =
-						LerpPoints(erosion, (erosion.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * erosion.noise.GetNoise(fx, fz);
-					float peaksNoise =
-						LerpPoints(peaks, (peaks.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peaks.noise.GetNoise(fx, fz);
-
-					float elevationNoise = clamp(((continentalnessNoise * 200.0f +
-												 (peaksNoise + 0.3f) * 40.0f) * erosionNoise + 120.0f) / 2.0f, 0.0f, 240.0f);
-					float temperatureNoise =
-						temperature.noise.GetNoise(fx, fz);
-					float humidityNoise =
-						0.1f * powf(2, -10.0f * powf(x / 512.0f - 1.0f, 2.0f)) +
-						humidity.noise.GetNoise(fx, fz);
-
-					float contdensityNoise =
-						LerpPoints(contdensity, (contdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * contdensity.noise.GetNoise(fx, fz);
-					float densityNoise =
-						LerpPoints(density, (density.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * density.noise.GetNoise(fx, fz);
-					float peakdensityNoise =
-						LerpPoints(peakdensity, (peakdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peakdensity.noise.GetNoise(fx, fz);
-
-					chunk.columns[z + x * CHUNK_WIDTH].noise =
-					{
-						continentalnessNoise,
-						erosionNoise,
-						peaksNoise,
-						elevationNoise,
-						temperatureNoise,
-						humidityNoise,
-						contdensityNoise,
-						densityNoise,
-						peakdensityNoise
-					};
-				}
-			}
-
-			//ChunkGenerateNoise(chunk, continentalness, erosion, peaks, temperature, humidity, contdensity, density, peakdensity, terrainOffsetX, terrainOffsetZ);
-		}
-
-
-
-		// TODO: make 2d array of column struct, each colum contains its biome type and limit
-		//std::array<std::array<std::pair<int, uint16_t>,
-		//	1024>, 1024>* world = new std::array<std::array<std::pair<int, uint16_t>, 1024>, 1024>();
-
-		// TODO: move lambda functions into actual header files
-		// TODO: don't store pair<limit, color> store the limit and biome id compressed into int16.
-		// TODO: multithread the execution
-		// TODO: make a voxel at coord function
-
-
-
-		/*
 		for (int x = 0; x < 1024; x++)
 		{
 			for (int z = 0; z < 1024; z++)
 			{
-				float fx = static_cast<float>(x + terrainOffsetX),
-					fz = static_cast<float>(z + terrainOffsetZ);
+				float fx = static_cast<float>(x + parameters.terrainOffsetX),
+					fz = static_cast<float>(z + parameters.terrainOffsetZ);
 
 				float continentalnessNoise =
 					LerpPoints(continentalness, (continentalness.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * continentalness.noise.GetNoise(fx, fz);
@@ -461,94 +411,62 @@ void Terrain::Tick(float deltaTime)
 
 				float elevationNoise = clamp(((continentalnessNoise * 200.0f +
 					(peaksNoise + 0.3f) * 40.0f) * erosionNoise + 120.0f) / 2.0f, 0.0f, 240.0f);
-				float temperatureNoise =
-					temperature.noise.GetNoise(fx, fz);
 				float humidityNoise =
 					0.1f * powf(2, -10.0f * powf(x / 512.0f - 1.0f, 2.0f)) +
 					humidity.noise.GetNoise(fx, fz);
 
-				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f,
-													temperatureNoise, humidityNoise);
-				int limit = static_cast<int>(dimension ? elevationNoise : 1);
+				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f, humidityNoise);
+				uint8_t level = static_cast<uint8_t>(parameters.dimension ? elevationNoise : 1);
 
-				if (waterFill && elevationNoise < 60.0f)
+				// Fill air with water
+				if (parameters.waterFill &&
+					parameters.dimension &&
+					elevationNoise < 60.0f)
 				{
-					limit = 60;
+					level = 60;
 				}
 
-				(*world)[x][z] = { limit, elevationNoise < 60.0f ?
-					(0x006 + (static_cast<int>(0x006 * elevationNoise / 60.0f) << 4)) : colors[biome]};
+				// Not entirely accurate,
+				// but much easier
+				voxels += level;
+
+				(*world)[x][z] =
+				{
+					level,
+					biome
+				};
 			}
 		}
 
-		for (int x = 0; x < terrainX; x++)
+#ifdef MULTI_THREADING
+		std::vector<std::thread> threads;
+
+		while (threads.size() < THREAD_LIMIT)
 		{
-			for (int z = 0; z < terrainZ; z++)
-			{
-				int limit = (*world)[x][z].first;
-
-				if (waterErosion && limit < 60)
-				{
-					int a = static_cast<int>(lerp((*world)[max(x - 4, 0)][z].first, (*world)[min(x + 4, 1023)][z].first, 0.5f));
-					int b = static_cast<int>(lerp((*world)[x][max(z - 4, 0)].first, (*world)[x][min(z + 4, 1023)].first, 0.5f));
-					limit = static_cast<int>(lerp(a, b, 0.5f));
-				}
-
-				const uint16_t color =
-					colorBlend ?
-					LerpColors
-					(
-						LerpColors((*world)[max(x - 4, 0)][z].second, (*world)[min(x + 4, 1023)][z].second, 0.5f),
-						LerpColors((*world)[x][max(z - 4, 0)].second, (*world)[x][min(z + 4, 1023)].second, 0.5f),
-						0.5f
-					) : (*world)[x][z].second;
-
-				for (int y = limit; y > -1; y--)
-				{
-					float fx = static_cast<float>(x + terrainOffsetX),
-						fy = static_cast<float>(y), fz = static_cast<float>(z + terrainOffsetZ);
-				// TODO: move noise out?
-					float contdensityNoise =
-						LerpPoints(contdensity, (contdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * contdensity.noise.GetNoise(fx, fz);
-					float densityNoise =
-						LerpPoints(density, (density.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * density.noise.GetNoise(fx, fz);
-					float peakdensityNoise =
-						LerpPoints(peakdensity, (peakdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peakdensity.noise.GetNoise(fx, fz);
-
-					bool bounds = y < 40 + peakdensity.noise.GetNoise(fx, fz) * 4.0f &&
-						y > 36 + peakdensity.noise.GetNoise(fx + 1.0f, fz + 1.0f) * 4.0f;
-					bool noodle = abs(contdensity.noise.GetNoise(fx, fz) * 10.0f +
-						density.noise.GetNoise(fx, fy, fz) * 5.0f +
-						peakdensity.noise.GetNoise(fx, fy, fz)) < 0.5f;
-					
-					if (bounds && noodle)
-					{
-						if (caveInverted)
-						{
-							Plot(x, y, z, color);
-							voxels++;
-						}
-
-						continue;
-					}
-
-					if (!caveInverted)
-					{
-						Plot(x, y, z, color);
-						voxels++;
-					}
-				}
-			}
+			threads.emplace_back(Generate, world, contdensity, density, peakdensity,
+				parameters, static_cast<int>(threads.size()));
 		}
-		*/
 
-		//delete world;
+		for (auto& thread : threads)
+		{
+			thread.join();
+		}
+#else
+		for (int thread = 0; thread < THREAD_LIMIT; thread++)
+		{
+			// Threads are not used here,
+			// they are faked so the function can be re-used.
+			Generate(world, contdensity, density, peakdensity, parameters, thread);
+		}
+#endif
 
-		using namespace std::chrono;
-		auto end = system_clock::now();
-		auto elapsed = duration_cast<milliseconds>(end - start);
+		delete world;
+
+		auto end = std::chrono::system_clock::now();
+		auto elapsed = duration_cast
+			<std::chrono::milliseconds>(end - start);
 		delay = elapsed.count();
-		dirty = false;
+		parameters.dirty = false;
 	}
 
 	ticks++;

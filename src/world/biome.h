@@ -43,7 +43,7 @@ constexpr std::array<uint16_t, 15> colors =
 	0x162,							// 9
 	0x263,							// 10
 	0x654,							// 11
-	0x124,							// 12
+	0x066,							// 12
 	0xf00,							// 13 (dirt)
 	0xaaa							// 14 (stone)
 };
@@ -65,25 +65,4 @@ constexpr std::array<Biome, 13> biomes =
 	"OCEAN"							// 12
 };
 
-constexpr std::array<std::array<uint8_t, 6>, 4> zones =
-{
-	{
-		{ 0, 0,  0,  1, 1,  2 },
-		{ 3, 3,  4,  4, 5,  5 },
-		{ 6, 6,  7,  7, 8,  8 },
-		{ 9, 9, 10, 10, 11, 11 },
-	}
-};
-
-uint8_t BiomeFunction(const float elevation, const float temperature, const float humidity)
-{
-	if (elevation < 0.0f)
-	{
-		return 12; // OCEAN
-	}
-	
-	int elevationIndex = static_cast<int>(clamp(4.0f -
-		elevation * 4.0f, 0.0f, 3.0f));
-	int humidityIndex = static_cast<int>(clamp((humidity + 1.0f) * 3.0f - elevation, 0.0f, 5.0f));
-	return zones[elevationIndex][humidityIndex];
-}
+uint8_t BiomeFunction(const float elevation, const float humidity);

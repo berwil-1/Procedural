@@ -31,9 +31,6 @@
     <ClCompile Include="src\terrain.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="src\world\chunk.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
     <ClCompile Include="src\world\biome.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -94,9 +91,6 @@
       <Filter>Libraries\Voronoi</Filter>
     </ClInclude>
     <ClInclude Include="src\terrain.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="src\world\chunk.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="src\world\biome.h">
