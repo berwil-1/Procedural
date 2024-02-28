@@ -26,7 +26,7 @@ namespace Tmpl8
 			waterFill = false, waterErosion = false,
 			caveInverted = false;
 
-		int dimension = 0; // 0 = 2d, 1 = 3d
+		int dimension = 1; // 0 = 2d, 1 = 3d
 		int presetIndex = 0, layerIndex = 0;
 		int terrainX = 512, terrainZ = 512, terrainOffsetX = 0, terrainOffsetZ = 0;
 	};

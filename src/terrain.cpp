@@ -424,15 +424,15 @@ void static Generate(const Columns* world, const Layer& contdensity, const Layer
 					density.noise.GetNoise(fx, fy, fz) * 5.0f +
 					peakdensity.noise.GetNoise(fx, fy, fz)) < 0.5f;
 
-				if (parameters.dimension && y < level - 6)
+				/*if (parameters.dimension && y < level - 1)
 				{
 					color = colors[13];
 				}
 
-				if (parameters.dimension && y < level - 16)
+				if (parameters.dimension && y < level - (density.noise.GetNoise(fx, fz) + 1.0f) * 8.0f)
 				{
 					color = colors[14];
-				}
+				}*/
 
 				if (level > 60 && bounds && noodle)
 				{
@@ -534,8 +534,7 @@ void Terrain::Tick(float deltaTime)
 						noise.GetNoise(fx, fz));
 				}*/
 
-				// Not entirely accurate,
-				// but much easier
+				// Not entirely accurate, but way easier.
 				voxels += level;
 
 				(*world)[x][z] =
