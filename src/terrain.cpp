@@ -250,8 +250,8 @@ void Terrain::HandleInterface()
 	ImGui::NewLine();
 
 	ImGui::SeparatorText("Terrain");
-	parameters.dirty |= ParameterSliderInt("Terrain X", parameters.terrainX, 0, 1024);
-	parameters.dirty |= ParameterSliderInt("Terrain Z", parameters.terrainZ, 0, 1024);
+	parameters.dirty |= ParameterSliderInt("Terrain X", parameters.terrainScaleX, 0, 1024);
+	parameters.dirty |= ParameterSliderInt("Terrain Z", parameters.terrainScaleZ, 0, 1024);
 	parameters.dirty |= ParameterSliderInt("Terrain Offset X", parameters.terrainOffsetX, -8192, 8192);
 	parameters.dirty |= ParameterSliderInt("Terrain Offset Z", parameters.terrainOffsetZ, -8192, 8192);
 
@@ -273,6 +273,12 @@ void Terrain::HandleInterface()
 			if (ImGui::TreeNode("Noise"))
 			{
 				parameters.dirty |= LayerParameter(erosion);
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Simulated"))
+			{
+				parameters.dirty |= ImGui::SliderInt("Iterations", &parameters.erosionIterations, 0, 131070);
 				ImGui::TreePop();
 			}
 
@@ -351,13 +357,13 @@ void Terrain::HandleInterface()
 
 void static Generate(const Columns* world, const Layer& contdensity, const Layer& density, const Layer& peakdensity, const Parameters& parameters, const int thread)
 {
-	int section = parameters.terrainX / THREAD_LIMIT;
+	int section = parameters.terrainScaleX / THREAD_LIMIT;
 	int start = thread * section;
 	int end = start + section;
 
 	for (int x = start; x < end; x++)
 	{
-		for (int z = 0; z < parameters.terrainZ; z++)
+		for (int z = 0; z < parameters.terrainScaleZ; z++)
 		{
 			const Column& column = (*world)[x][z];
 			const uint8_t level = column.level;
@@ -382,22 +388,6 @@ void static Generate(const Columns* world, const Layer& contdensity, const Layer
 				int f = max(static_cast<int>(0x00f * level / 60.0f), 0x001);
 				color = (f << 8) | (f << 4) | f;
 			}
-
-			/*if (waterErosion && level < 60)
-			{
-				int a = static_cast<int>(lerp((*world)[max(x - 4, 0)][z].first, (*world)[min(x + 4, 1023)][z].first, 0.5f));
-				int b = static_cast<int>(lerp((*world)[x][max(z - 4, 0)].first, (*world)[x][min(z + 4, 1023)].first, 0.5f));
-				level = static_cast<int>(lerp(a, b, 0.5f));
-			}*/
-
-			/*const uint16_t color =
-			colorBlend ?
-			LerpColors
-			(
-				LerpColors((*world)[max(x - 4, 0)][z].second, (*world)[min(x + 4, 1023)][z].second, 0.5f),
-				LerpColors((*world)[x][max(z - 4, 0)].second, (*world)[x][min(z + 4, 1023)].second, 0.5f),
-				0.5f
-			) : (*world)[x][z].second;*/
 
 			const float fx = static_cast<float>(x + 0),
 				fz = static_cast<float>(z + 0);
@@ -484,9 +474,6 @@ void Terrain::Tick(float deltaTime)
 		ClearWorld();
 		auto start = std::chrono::system_clock::now();
 
-		// TODO: add dirt and stone underground
-		// TODO: document and write presentation
-
 		// Height and biome type in a 2d array.
 		Columns* world = new Columns;
 
@@ -513,26 +500,9 @@ void Terrain::Tick(float deltaTime)
 				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f, humidityNoise);
 
 				uint8_t level = static_cast<uint8_t>(elevationNoise);
-				//level = (parameters.waterFill && elevationNoise < 60.0f) ? 60 : level;
 				level = parameters.layerIndex ?
 					static_cast<uint8_t>((layers[parameters.layerIndex - 1].
 						noise.GetNoise(fx, fz) + 1.0f) * 30.0f) : level;
-
-				/*uint8_t level = static_cast<uint8_t>(parameters.dimension ? elevationNoise : 1);
-
-				// Fill air with water
-				if (parameters.waterFill &&
-					parameters.dimension &&
-					elevationNoise < 60.0f)
-				{
-					level = 60;
-				}
-
-				if (parameters.layerIndex)
-				{
-					level = static_cast<uint8_t>(layers[parameters.layerIndex - 1].
-						noise.GetNoise(fx, fz));
-				}*/
 
 				// Not entirely accurate, but way easier.
 				voxels += level;
@@ -544,6 +514,124 @@ void Terrain::Tick(float deltaTime)
 				};
 			}
 		}
+
+		for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
+		{
+next:
+			// Random droplet location
+			int rx = urandom() % parameters.terrainScaleX,
+				rz = urandom() % parameters.terrainScaleZ;
+
+			for (int step = 0; step < 128; step++)
+			{
+				//uint8_t level = (*world)[rx][rz].level;
+
+				uint8_t level = (*world)[rx][rz].level;
+
+				for (int x = -1; x < 2; x++)
+				{
+					if ((rx + x) < 0 || (rx + x) > parameters.terrainScaleX - 1)
+					{
+						goto next;
+					}
+
+					for (int z = -1; z < 2; z++)
+					{
+						if ((rz + z) < 0 || (rz + z) > parameters.terrainScaleZ - 1)
+						{
+							goto next;
+						}
+
+						if ((*world)[rx + x][rz + z].level < level)
+						{
+							rx = rx + x;
+							rz = rz + z;
+						}
+
+						//if ((*world)[rx + x][rz + z].level <= (*world)[lx][lz].level)
+						// {
+						// 	lx = rx + x;
+						// 	lz = rz + z;
+						// }
+					}
+				}
+
+				(*world)[rx][rz].biome = 15;
+
+				// rx = lx; rz = lz;
+				// (*world)[lx][lz].level = 0;
+			}
+		}
+
+		/*for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
+		{
+		next:
+			constexpr float scale = 10.0f;
+
+			// Start location
+			float rx = urandom() % parameters.terrainScaleX,
+				rz = urandom() % parameters.terrainScaleZ;
+			
+			//float vx = (random() % 100) / 1000.0f,
+			//	vz = (random() % 100) / 1000.0f;
+			float vx = 0.0f, vz = 0.0f;
+			float stolen = 0;
+
+			for (int step = 0; step < 128; step++)
+			{
+				for (int x = -1; x < 2; x++)
+				{
+					for (int z = -1; z < 2; z++)
+					{
+						// Out-of-bound check
+						if (((int)rx + x) < 0 || ((int)rx + x) > parameters.terrainScaleX - 1 ||
+							((int)rz + z) < 0 || ((int)rz + z) > parameters.terrainScaleX - 1)
+						{
+							goto next;
+						}
+
+						vx += x * (255 - (*world)[rx + x][rz + z].level) / 255.0f;
+						vz += z * (255 - (*world)[rx + x][rz + z].level) / 255.0f;
+					}
+				}
+
+				// Out-of-bound check
+				if ((int)(rx + vx * scale) < 0 || (int)(rx + vx * scale) > parameters.terrainScaleX - 1 ||
+					(int)(rz + vz * scale) < 0 || (int)(rz + vz * scale) > parameters.terrainScaleX - 1)
+				{
+					goto next;
+				}
+
+				int delta = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level - (*world)[(int)rx][(int)rz].level;
+
+				if (delta < 0 && stolen < 20.0f)
+				{
+					// float f = delta / 10.0f;
+					// (*world)[(int)rx][(int)rz].erosion += f;
+					// stolen += abs(f);
+
+					if ((*world)[(int)rx][(int)rz].level > (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level)
+					{
+						stolen++;
+						(*world)[(int)rx][(int)rz].level--;
+					}
+				}
+
+				// Take step, move with velocity.
+				rx += vx * scale; rz += vz * scale;
+
+				if (delta > 0 || stolen > 10.0f)
+				{
+					// float f = delta / 10.0f;
+					// (*world)[(int)rx][(int)rz].erosion += f;
+					// stolen = max(stolen - f, 0.0f);
+
+					stolen--;
+					(*world)[(int)rx][(int)rz].level++;
+				}
+			}
+		}*/
+
 
 #ifdef MULTI_THREADING
 		std::vector<std::thread> threads;

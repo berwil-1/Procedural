@@ -28,7 +28,9 @@ namespace Tmpl8
 
 		int dimension = 1; // 0 = 2d, 1 = 3d
 		int presetIndex = 0, layerIndex = 0;
-		int terrainX = 512, terrainZ = 512, terrainOffsetX = 0, terrainOffsetZ = 0;
+		int terrainScaleX = 512, terrainScaleZ = 512,
+			terrainOffsetX = 0, terrainOffsetZ = 0;
+		int erosionIterations = 100;
 	};
 
 	class Terrain : public Game

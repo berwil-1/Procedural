@@ -15,7 +15,7 @@ struct Biome
 	}
 };
 
-constexpr std::array<uint16_t, 15> colors =
+constexpr std::array<uint16_t, 16> colors =
 {
 	/*0x553,
 	0x333,
@@ -45,7 +45,8 @@ constexpr std::array<uint16_t, 15> colors =
 	0x654,							// 11
 	0x066,							// 12
 	0x321,							// 13 (dirt)
-	0x555							// 14 (stone)
+	0x555,							// 14 (stone)
+	0xf00							// 15 (debug)
 };
 
 constexpr std::array<Biome, 13> biomes =
