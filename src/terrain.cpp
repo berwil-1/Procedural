@@ -476,6 +476,7 @@ void Terrain::Tick(float deltaTime)
 
 		// Height and biome type in a 2d array.
 		Columns* world = new Columns;
+		std::vector<std::array<std::pair<int, int>, 128>> drops;
 
 		for (int x = 0; x < 1024; x++)
 		{
@@ -516,6 +517,64 @@ void Terrain::Tick(float deltaTime)
 		}
 
 		for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
+		{
+next:
+			constexpr float scale = 10.0f;
+			std::array<std::pair<int, int>, 128> steps;
+
+			// Start location
+			float rx = urandom() % parameters.terrainScaleX,
+				rz = urandom() % parameters.terrainScaleZ;
+			float vx = 0.1f,
+				vz = 0.0f;
+			float stolen = 0;
+
+			for (int step = 0; step < 128; step++)
+			{
+				for (int x = -1; x < 2; x++)
+				{
+					for (int z = -1; z < 2; z++)
+					{
+						// Out-of-bound check
+						if (((int)rx + x) < 0 || ((int)rx + x) > parameters.terrainScaleX - 1 ||
+							((int)rz + z) < 0 || ((int)rz + z) > parameters.terrainScaleX - 1)
+						{
+							goto next;
+						}
+
+						vx += x * (255 - (*world)[rx + x][rz + z].level) / 255.0f;
+						vz += z * (255 - (*world)[rx + x][rz + z].level) / 255.0f;
+					}
+				}
+
+				// Out-of-bound check
+				if ((int)(rx + vx * scale) < 0 || (int)(rx + vx * scale) > parameters.terrainScaleX - 1 ||
+					(int)(rz + vz * scale) < 0 || (int)(rz + vz * scale) > parameters.terrainScaleX - 1)
+				{
+					goto next;
+				}
+
+				int delta = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level - (*world)[(int)rx][(int)rz].level;
+
+				// Take step, move with velocity.
+				rx += vx * scale; rz += vz * scale;
+
+				steps[step] = { (int)rx, (int)rz };
+			}
+
+			drops.push_back(steps);
+		}
+
+		for (const auto& drop : drops)
+		{
+			for (const auto& step : drop)
+			{
+				(*world)[step.first][step.second].level--;
+				//(*world)[step.first][step.second].biome = 15;
+			}
+		}
+
+		/*for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
 		{
 			// Random droplet location
 			int rx = urandom() % parameters.terrainScaleX,
@@ -566,23 +625,13 @@ void Terrain::Tick(float deltaTime)
 				}
 
 				steps.emplace_back(rx, rz);
-
-				//(*world)[rx][rz].level++;
-				//(*world)[rx][rz].biome = 15;
 			}
 
 			for (auto step : steps)
 			{
-				//int3 p = { step.first, 255, step.second };
-				//Plot(p, 0xaaa);
 				(*world)[step.first][step.second].biome = 15;
 			}
-
-			// int3 s = { steps[0].first, 255, steps[0].second };
-			// int3 e = { steps[steps.size() - 1].first, 255, steps[steps.size() - 1].second};
-			// Plot(s, 0x00f);
-			// Plot(e, 0xf00);
-		}
+		}*/
 
 		/*for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
 		{
