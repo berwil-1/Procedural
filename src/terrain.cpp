@@ -517,50 +517,71 @@ void Terrain::Tick(float deltaTime)
 
 		for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
 		{
-next:
 			// Random droplet location
 			int rx = urandom() % parameters.terrainScaleX,
 				rz = urandom() % parameters.terrainScaleZ;
+			int lx = 0, lz = 0;
+			std::vector<std::pair<int, int>> steps;
 
 			for (int step = 0; step < 128; step++)
 			{
-				//uint8_t level = (*world)[rx][rz].level;
-
-				uint8_t level = (*world)[rx][rz].level;
+				uint8_t lowest = 255;
 
 				for (int x = -1; x < 2; x++)
 				{
-					if ((rx + x) < 0 || (rx + x) > parameters.terrainScaleX - 1)
+					if (rx + x < 0 || rx + x > parameters.terrainScaleX - 1)
 					{
-						goto next;
+						continue;
 					}
 
 					for (int z = -1; z < 2; z++)
 					{
-						if ((rz + z) < 0 || (rz + z) > parameters.terrainScaleZ - 1)
+						if (x == 0 && z == 0)
 						{
-							goto next;
+							continue;
 						}
 
-						if ((*world)[rx + x][rz + z].level < level)
+						if (rz + z < 0 || rz + z > parameters.terrainScaleZ - 1)
 						{
-							rx = rx + x;
-							rz = rz + z;
+							continue;
 						}
 
-						//if ((*world)[rx + x][rz + z].level <= (*world)[lx][lz].level)
-						// {
-						// 	lx = rx + x;
-						// 	lz = rz + z;
-						// }
+						const uint8_t level = (*world)[rx + x][rz + z].level;
+
+						if (level < lowest)
+						{
+							lowest = level;
+							lx = x;
+							lz = z;
+						}
 					}
 				}
 
-				(*world)[rx][rz].biome = 15;
+				rx += lx; rz += lz;
 
-				// rx = lx; rz = lz;
-				// (*world)[lx][lz].level = 0;
+				if (rx < 0 || rx > parameters.terrainScaleX - 1 ||
+					rz < 0 || rz > parameters.terrainScaleZ - 1)
+				{
+					break;
+				}
+
+				steps.emplace_back(rx, rz);
+
+				//(*world)[rx][rz].level++;
+				//(*world)[rx][rz].biome = 15;
 			}
+
+			for (auto step : steps)
+			{
+				//int3 p = { step.first, 255, step.second };
+				//Plot(p, 0xaaa);
+				(*world)[step.first][step.second].biome = 15;
+			}
+
+			// int3 s = { steps[0].first, 255, steps[0].second };
+			// int3 e = { steps[steps.size() - 1].first, 255, steps[steps.size() - 1].second};
+			// Plot(s, 0x00f);
+			// Plot(e, 0xf00);
 		}
 
 		/*for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
