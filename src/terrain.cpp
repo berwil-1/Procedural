@@ -559,14 +559,40 @@ next:
 					break;
 				}
 
-				int delta = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level - (*world)[(int)rx][(int)rz].level;
-				(*world)[(int)rx][(int)rz].level += delta;
-
-				/*if (delta < 0)
+				/*if ((*world)[(int)rx][(int)rz].biome != 12)
 				{
-					// (*world)[(int)rx][(int)rz].level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
+					int delta = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level - (*world)[(int)rx][(int)rz].level;
 					(*world)[(int)rx][(int)rz].level += delta;
 				}*/
+
+				int delta = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level - (*world)[(int)rx][(int)rz].level;
+				if (delta < 0 && (*world)[(int)rx][(int)rz].biome != 12)
+				{
+					uint8_t level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
+
+					for (int x = -1; x < 2; x++)
+					{
+						// Out-of-bound check
+						if (((int)rx + x) < 0 || ((int)rx + x) > parameters.terrainScaleX - 1)
+						{
+							continue;
+						}
+
+						for (int z = -1; z < 2; z++)
+						{
+							// Out-of-bound check
+							if (((int)rz + z) < 0 || ((int)rz + z) > parameters.terrainScaleX - 1)
+							{
+								continue;
+							}
+
+							(*world)[(int)rx + x][(int)rz + z].level = level;
+						}
+					}
+
+					// (*world)[(int)rx][(int)rz].level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
+					// (*world)[(int)rx][(int)rz].level += delta;
+				}
 				
 				// Take step, move with velocity.
 				rx += vx * scale; rz += vz * scale;
