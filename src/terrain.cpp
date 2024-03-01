@@ -570,7 +570,7 @@ next:
 				{
 					uint8_t level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
 
-					for (int x = -1; x < 2; x++)
+					for (int x = -2; x < 3; x++)
 					{
 						// Out-of-bound check
 						if (((int)rx + x) < 0 || ((int)rx + x) > parameters.terrainScaleX - 1)
@@ -578,7 +578,7 @@ next:
 							continue;
 						}
 
-						for (int z = -1; z < 2; z++)
+						for (int z = -2; z < 3; z++)
 						{
 							// Out-of-bound check
 							if (((int)rz + z) < 0 || ((int)rz + z) > parameters.terrainScaleX - 1)
