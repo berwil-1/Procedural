@@ -28,9 +28,9 @@ namespace Tmpl8
 
 		int dimension = 1; // 0 = 2d, 1 = 3d
 		int presetIndex = 0, layerIndex = 0;
-		int terrainScaleX = 512, terrainScaleZ = 512,
+		int terrainScaleX = 1024, terrainScaleZ = 1024,
 			terrainOffsetX = 0, terrainOffsetZ = 0;
-		int erosionIterations = 100;
+		int erosionIterations = 25000;
 	};
 
 	class Terrain : public Game
@@ -59,6 +59,8 @@ namespace Tmpl8
 			return 0.5f * (2 * p1 + ((p2 - p0) * splineLerp) + (c * splineLerp * splineLerp) + (d * splineLerp * splineLerp * splineLerp));
 		}
 
+		void SaveFrameBuffer(const char* path, Columns* world);
+
 		// Camera
 		float3 cameraDirection = make_float3(0.0f, 0.0f, 1.0f);
 		float3 cameraPosition = make_float3(0.0f, 0.0f, 0.0f);
@@ -83,6 +85,9 @@ namespace Tmpl8
 		Layer continentalness, erosion, peaks,
 			contdensity, density, peakdensity,
 			temperature, humidity;
+
+		// Height and biome type in a 2d array.
+		Columns* world = new Columns;
 	};
 
 } // namespace Tmpl8

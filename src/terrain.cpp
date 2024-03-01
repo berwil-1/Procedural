@@ -9,6 +9,9 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #include <cmath>
 #include <chrono>
 
@@ -278,7 +281,8 @@ void Terrain::HandleInterface()
 
 			if (ImGui::TreeNode("Simulated"))
 			{
-				parameters.dirty |= ImGui::SliderInt("Iterations", &parameters.erosionIterations, 0, 131070);
+				ImGui::SliderInt("Iterations", &parameters.erosionIterations, 0, 131070);
+				parameters.dirty |= ImGui::IsItemDeactivatedAfterEdit();
 				ImGui::TreePop();
 			}
 
@@ -474,10 +478,6 @@ void Terrain::Tick(float deltaTime)
 		ClearWorld();
 		auto start = std::chrono::system_clock::now();
 
-		// Height and biome type in a 2d array.
-		Columns* world = new Columns;
-		std::vector<std::array<std::pair<int, int>, 128>> drops;
-
 		for (int x = 0; x < 1024; x++)
 		{
 			for (int z = 0; z < 1024; z++)
@@ -533,145 +533,18 @@ next:
 			{
 				for (int x = -1; x < 2; x++)
 				{
-					for (int z = -1; z < 2; z++)
-					{
-						// Out-of-bound check
-						if (((int)rx + x) < 0 || ((int)rx + x) > parameters.terrainScaleX - 1 ||
-							((int)rz + z) < 0 || ((int)rz + z) > parameters.terrainScaleX - 1)
-						{
-							goto next;
-						}
-
-						vx += x * (255 - (*world)[rx + x][rz + z].level) / 255.0f;
-						vz += z * (255 - (*world)[rx + x][rz + z].level) / 255.0f;
-					}
-				}
-
-				// Out-of-bound check
-				if ((int)(rx + vx * scale) < 0 || (int)(rx + vx * scale) > parameters.terrainScaleX - 1 ||
-					(int)(rz + vz * scale) < 0 || (int)(rz + vz * scale) > parameters.terrainScaleX - 1)
-				{
-					goto next;
-				}
-
-				int delta = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level - (*world)[(int)rx][(int)rz].level;
-
-				if (delta < 0)
-				{
-					(*world)[(int)rx][(int)rz].level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
-				}
-
-				// Take step, move with velocity.
-				rx += vx * scale; rz += vz * scale;
-
-
-				//steps[step] = { (int)rx, (int)rz };
-			}
-
-			//drops.push_back(steps);
-		}
-
-		for (const auto& drop : drops)
-		{
-
-
-			/*for (auto step : drop)
-			{
-				int3 p = { step.first, (*world)[step.first][step.second].level + 1, step.second };
-				Plot(p, 0xaaa);
-				//(*world)[step.first][step.second].biome = 15;
-			}
-
-			int3 s = { drop[0].first, (*world)[drop[0].first][drop[0].second].level + 1, drop[0].second};
-			int3 e = { drop[drop.size() - 1].first, (*world)[drop[drop.size() - 1].first][drop[drop.size() - 1].second].level + 1, drop[drop.size() - 1].second};
-			Plot(s, 0x00f);
-			Plot(e, 0xf00);*/
-		}
-
-		/*for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
-		{
-			// Random droplet location
-			int rx = urandom() % parameters.terrainScaleX,
-				rz = urandom() % parameters.terrainScaleZ;
-			int lx = 0, lz = 0;
-			std::vector<std::pair<int, int>> steps;
-
-			for (int step = 0; step < 128; step++)
-			{
-				uint8_t lowest = 255;
-
-				for (int x = -1; x < 2; x++)
-				{
-					if (rx + x < 0 || rx + x > parameters.terrainScaleX - 1)
+					// Out-of-bound check
+					if (((int)rx + x) < 0 || ((int)rx + x) > parameters.terrainScaleX - 1)
 					{
 						continue;
 					}
 
 					for (int z = -1; z < 2; z++)
 					{
-						if (x == 0 && z == 0)
-						{
-							continue;
-						}
-
-						if (rz + z < 0 || rz + z > parameters.terrainScaleZ - 1)
-						{
-							continue;
-						}
-
-						const uint8_t level = (*world)[rx + x][rz + z].level;
-
-						if (level < lowest)
-						{
-							lowest = level;
-							lx = x;
-							lz = z;
-						}
-					}
-				}
-
-				rx += lx; rz += lz;
-
-				if (rx < 0 || rx > parameters.terrainScaleX - 1 ||
-					rz < 0 || rz > parameters.terrainScaleZ - 1)
-				{
-					break;
-				}
-
-				steps.emplace_back(rx, rz);
-			}
-
-			for (auto step : steps)
-			{
-				(*world)[step.first][step.second].biome = 15;
-			}
-		}*/
-
-		/*for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
-		{
-		next:
-			constexpr float scale = 10.0f;
-
-			// Start location
-			float rx = urandom() % parameters.terrainScaleX,
-				rz = urandom() % parameters.terrainScaleZ;
-			
-			//float vx = (random() % 100) / 1000.0f,
-			//	vz = (random() % 100) / 1000.0f;
-			float vx = 0.0f, vz = 0.0f;
-			float stolen = 0;
-
-			for (int step = 0; step < 128; step++)
-			{
-				for (int x = -1; x < 2; x++)
-				{
-					for (int z = -1; z < 2; z++)
-					{
 						// Out-of-bound check
-						if (((int)rx + x) < 0 || ((int)rx + x) > parameters.terrainScaleX - 1 ||
-							((int)rz + z) < 0 || ((int)rz + z) > parameters.terrainScaleX - 1)
+						if (((int)rz + z) < 0 || ((int)rz + z) > parameters.terrainScaleX - 1)
 						{
-							goto next;
+							continue;
 						}
 
 						vx += x * (255 - (*world)[rx + x][rz + z].level) / 255.0f;
@@ -683,38 +556,22 @@ next:
 				if ((int)(rx + vx * scale) < 0 || (int)(rx + vx * scale) > parameters.terrainScaleX - 1 ||
 					(int)(rz + vz * scale) < 0 || (int)(rz + vz * scale) > parameters.terrainScaleX - 1)
 				{
-					goto next;
+					break;
 				}
 
 				int delta = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level - (*world)[(int)rx][(int)rz].level;
+				(*world)[(int)rx][(int)rz].level += delta;
 
-				if (delta < 0 && stolen < 20.0f)
+				/*if (delta < 0)
 				{
-					// float f = delta / 10.0f;
-					// (*world)[(int)rx][(int)rz].erosion += f;
-					// stolen += abs(f);
-
-					if ((*world)[(int)rx][(int)rz].level > (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level)
-					{
-						stolen++;
-						(*world)[(int)rx][(int)rz].level--;
-					}
-				}
-
+					// (*world)[(int)rx][(int)rz].level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
+					(*world)[(int)rx][(int)rz].level += delta;
+				}*/
+				
 				// Take step, move with velocity.
 				rx += vx * scale; rz += vz * scale;
-
-				if (delta > 0 || stolen > 10.0f)
-				{
-					// float f = delta / 10.0f;
-					// (*world)[(int)rx][(int)rz].erosion += f;
-					// stolen = max(stolen - f, 0.0f);
-
-					stolen--;
-					(*world)[(int)rx][(int)rz].level++;
-				}
 			}
-		}*/
+		}
 
 
 #ifdef MULTI_THREADING
@@ -738,8 +595,6 @@ next:
 			Generate(world, contdensity, density, peakdensity, parameters, thread);
 		}
 #endif
-
-		delete world;
 
 		auto end = std::chrono::system_clock::now();
 		auto elapsed = duration_cast
@@ -781,6 +636,43 @@ void Terrain::Shutdown()
 	fwrite(&cameraPosition, 1, sizeof(cameraPosition), f);
 	fclose(f);
 
-	// uint sprite = CreateSprite(0, 0, 0, 256, 256, 256);
-	// SaveSprite(sprite, "world.vox");
+	SaveFrameBuffer("heightmap.png", world);
+
+	delete world;
+}
+
+void Terrain::SaveFrameBuffer(const char* path, Columns* world)
+{
+	std::vector<uint8_t> data;
+	uint8_t highest = 0, lowest = 255;
+
+	for (int x = 0; x < parameters.terrainScaleX; x++)
+	{
+		for (int z = 0; z < parameters.terrainScaleZ; z++)
+		{
+			uint8_t level = (*world)[x][z].level;
+			highest = max(highest, level);
+			lowest = min(lowest, level);
+		}
+	}
+
+	for (int x = 0; x < parameters.terrainScaleX; x++)
+	{
+		for (int z = 0; z < parameters.terrainScaleZ; z++)
+		{
+			uint8_t level = static_cast<uint8_t>((((*world)[x][z].level - lowest) /
+				static_cast<float>(highest)) * 255.0f);
+
+			data.push_back(level);
+			data.push_back(level);
+			data.push_back(level);
+
+			// data.push_back((*world)[x][z].level);
+			// data.push_back((*world)[x][z].level);
+			// data.push_back((*world)[x][z].level);
+		}
+	}
+
+	stbi_write_png(path, parameters.terrainScaleX, parameters.terrainScaleZ, 3,
+		data.data(), static_cast<size_t>(parameters.terrainScaleX * 3) * sizeof(char));
 }
