@@ -519,14 +519,14 @@ void Terrain::Tick(float deltaTime)
 		for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
 		{
 next:
-			constexpr float scale = 10.0f;
+			constexpr float scale = 1.0f;
 			std::array<std::pair<int, int>, 128> steps;
 
 			// Start location
 			float rx = urandom() % parameters.terrainScaleX,
 				rz = urandom() % parameters.terrainScaleZ;
-			float vx = 0.1f,
-				vz = 0.0f;
+			float vx = (random() % 10) / 1000.0f,
+				vz = (random() % 10) / 1000.0f;
 			float stolen = 0;
 
 			for (int step = 0; step < 128; step++)
@@ -556,22 +556,36 @@ next:
 
 				int delta = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level - (*world)[(int)rx][(int)rz].level;
 
+				if (delta < 0)
+				{
+					(*world)[(int)rx][(int)rz].level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
+				}
+
 				// Take step, move with velocity.
 				rx += vx * scale; rz += vz * scale;
 
-				steps[step] = { (int)rx, (int)rz };
+
+				//steps[step] = { (int)rx, (int)rz };
 			}
 
-			drops.push_back(steps);
+			//drops.push_back(steps);
 		}
 
 		for (const auto& drop : drops)
 		{
-			for (const auto& step : drop)
+
+
+			/*for (auto step : drop)
 			{
-				(*world)[step.first][step.second].level--;
+				int3 p = { step.first, (*world)[step.first][step.second].level + 1, step.second };
+				Plot(p, 0xaaa);
 				//(*world)[step.first][step.second].biome = 15;
 			}
+
+			int3 s = { drop[0].first, (*world)[drop[0].first][drop[0].second].level + 1, drop[0].second};
+			int3 e = { drop[drop.size() - 1].first, (*world)[drop[drop.size() - 1].first][drop[drop.size() - 1].second].level + 1, drop[drop.size() - 1].second};
+			Plot(s, 0x00f);
+			Plot(e, 0xf00);*/
 		}
 
 		/*for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
