@@ -49,7 +49,7 @@ void Terrain::Init()
 
 	// Load spline path
 	CameraPoint p;
-	FILE* fp = fopen("assets/splinepath.bin", "rb");
+	FILE* fp = fopen("spline.bin", "rb");
 	while (true)
 	{
 		fread(&p.cameraPosition, 1, sizeof(p.cameraPosition), fp);
@@ -73,6 +73,10 @@ void Terrain::Init()
 void Terrain::HandleInput(float deltaTime)
 {
 #if 1
+	if (GetAsyncKeyState(VK_F1) & 1)
+	{
+		ui = !ui;
+	}
 	if (GetAsyncKeyState(VK_RBUTTON))
 	{
 		glfwSetInputMode(GetGlfwWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -124,6 +128,7 @@ void Terrain::HandleInput(float deltaTime)
 		// Save a point for the spline
 		if (!pdown)
 		{
+			printf("Splinepoint added\n");
 			if (!pf) pf = fopen("spline.bin", "wb");
 			fwrite(&cameraPosition, 1, sizeof(cameraPosition), pf);
 			float3 t = cameraPosition + cameraDirection;
@@ -150,11 +155,19 @@ void Terrain::HandleInput(float deltaTime)
 
 void Terrain::HandleInterface()
 {
+	if (!ui)
+	{
+		return;
+	}
+
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
 	ImGui::Text("Voxels (%.2f mv)		Delay (%lld ms)", voxels / 1000000.0f, delay);
+	ImGui::Text("Camera X: %.1f Y: %.1f Z: %.1f I: %.1f J: %.1f K: %.1f",
+		cameraPosition.x, cameraPosition.y, cameraPosition.z,
+		cameraDirection.x, cameraDirection.y, cameraDirection.z);
 
 	parameters.dirty |= ImGui::RadioButton("2D", &parameters.dimension, 0);
 	ImGui::SameLine();
@@ -359,94 +372,6 @@ void Terrain::HandleInterface()
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void static Generate(const Columns* world, const Layer& contdensity, const Layer& density, const Layer& peakdensity, const Parameters& parameters, const int thread)
-{
-	int section = parameters.terrainScaleX / THREAD_LIMIT;
-	int start = thread * section;
-	int end = start + section;
-
-	for (int x = start; x < end; x++)
-	{
-		for (int z = 0; z < parameters.terrainScaleZ; z++)
-		{
-			const Column& column = (*world)[x][z];
-			const uint8_t level = column.level;
-
-			const uint16_t water = (0x006 + (static_cast<int>(0x006 * level / 60.0f) << 4));
-			uint16_t color = (level < 61 && parameters.dimension) ? water : colors[column.biome];
-
-			if (parameters.blend)
-			{
-				uint16_t nearby = LerpColors
-				(
-					LerpColors(colors[(*world)[max(x - 4, 0)][z].biome], colors[(*world)[min(x + 4, 1023)][z].biome], 0.5f),
-					LerpColors(colors[(*world)[x][max(z - 4, 0)].biome], colors[(*world)[x][min(z + 4, 1023)].biome], 0.5f),
-					0.5f
-				);
-
-				color = LerpColors(nearby, color, 0.5f);
-			}
-
-			if (parameters.layerIndex)
-			{
-				int f = max(static_cast<int>(0x00f * level / 60.0f), 0x001);
-				color = (f << 8) | (f << 4) | f;
-			}
-
-			const float fx = static_cast<float>(x + 0),
-				fz = static_cast<float>(z + 0);
-			float contdensityNoise =
-				LerpPoints(contdensity, (contdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * contdensity.noise.GetNoise(fx, fz);
-			float peakdensityNoise =
-				LerpPoints(peakdensity, (peakdensity.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peakdensity.noise.GetNoise(fx, fz);
-
-			if (parameters.waterFill&& level < 61)
-			{
-				for (int y = 60; y > parameters.dimension ? level : 0; y--)
-				{
-					Plot(x, y, z, color);
-				}
-			}
-
-			for (int y = parameters.dimension ? level : 0; y > -1; y--)
-			{
-				float fy = static_cast<float>(y);
-
-				bool bounds = y < 40 + peakdensityNoise * 4.0f &&
-					y > 36 + peakdensityNoise * 4.0f;
-				bool noodle = abs(contdensityNoise * 10.0f +
-					density.noise.GetNoise(fx, fy, fz) * 5.0f +
-					peakdensity.noise.GetNoise(fx, fy, fz)) < 0.5f;
-
-				/*if (parameters.dimension && y < level - 1)
-				{
-					color = colors[13];
-				}
-
-				if (parameters.dimension && y < level - (density.noise.GetNoise(fx, fz) + 1.0f) * 8.0f)
-				{
-					color = colors[14];
-				}*/
-
-				if (level > 60 && bounds && noodle)
-				{
-					if (parameters.caveInverted)
-					{
-						Plot(x, y, z, color);
-					}
-
-					continue;
-				}
-
-				if (!parameters.caveInverted)
-				{
-					Plot(x, y, z, color);
-				}
-			}
-		}
-	}
-}
-
 void Terrain::Tick(float deltaTime)
 {
 	static size_t ticks = 0;
@@ -478,149 +403,22 @@ void Terrain::Tick(float deltaTime)
 		ClearWorld();
 		auto start = std::chrono::system_clock::now();
 
-		for (int x = 0; x < 1024; x++)
+		for (int x = 0; x < parameters.terrainScaleX; x++)
 		{
-			for (int z = 0; z < 1024; z++)
+			for (int z = 0; z < parameters.terrainScaleZ; z++)
 			{
-				float fx = static_cast<float>(x + parameters.terrainOffsetX),
-					fz = static_cast<float>(z + parameters.terrainOffsetZ);
 
-				float continentalnessNoise =
-					LerpPoints(continentalness, (continentalness.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * continentalness.noise.GetNoise(fx, fz);
-				float erosionNoise =
-					LerpPoints(erosion, (erosion.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * erosion.noise.GetNoise(fx, fz);
-				float peaksNoise =
-					LerpPoints(peaks, (peaks.noise.GetNoise(fx, fz) + 1.0f) / 2.0f) * peaks.noise.GetNoise(fx, fz);
+				float fx = static_cast<float>(x), fz = static_cast<float>(z);
+				float cont = continentalness.noise.GetNoise(fx, fz);
+				float eros = erosion.noise.GetNoise(fx, fz);
+				float peak = peaks.noise.GetNoise(fx, fz);
+				float y = eros * (cont * 10.0f + peak) + 11.0f; // %253
 
-				float elevationNoise = clamp(((continentalnessNoise * 200.0f +
-					(peaksNoise + 0.3f) * 40.0f) * erosionNoise + 120.0f) / 2.0f, 0.0f, 240.0f);
-				float humidityNoise =
-					0.1f * powf(2, -10.0f * powf(x / 512.0f - 1.0f, 2.0f)) +
-					humidity.noise.GetNoise(fx, fz);
+				// Place voxel at xyz
+				Plot(x, y, z, clamp(LerpColors(0x111, 0xfff, y / 22.0f), 0x111, 0xfff));
 
-				const uint8_t biome = BiomeFunction(elevationNoise / 60.0f - 1.0f, humidityNoise);
-
-				uint8_t level = static_cast<uint8_t>(elevationNoise);
-				level = parameters.layerIndex ?
-					static_cast<uint8_t>((layers[parameters.layerIndex - 1].
-						noise.GetNoise(fx, fz) + 1.0f) * 30.0f) : level;
-
-				// Not entirely accurate, but way easier.
-				voxels += level;
-
-				(*world)[x][z] =
-				{
-					level,
-					biome
-				};
 			}
 		}
-
-		for (int iteration = 0; iteration < parameters.erosionIterations; iteration++)
-		{
-next:
-			constexpr float scale = 1.0f;
-			std::array<std::pair<int, int>, 128> steps;
-
-			// Start location
-			float rx = urandom() % parameters.terrainScaleX,
-				rz = urandom() % parameters.terrainScaleZ;
-			float vx = (random() % 10) / 1000.0f,
-				vz = (random() % 10) / 1000.0f;
-			float stolen = 0;
-
-			for (int step = 0; step < 128; step++)
-			{
-				for (int x = -1; x < 2; x++)
-				{
-					// Out-of-bound check
-					if (((int)rx + x) < 0 || ((int)rx + x) > parameters.terrainScaleX - 1)
-					{
-						continue;
-					}
-
-					for (int z = -1; z < 2; z++)
-					{
-						// Out-of-bound check
-						if (((int)rz + z) < 0 || ((int)rz + z) > parameters.terrainScaleX - 1)
-						{
-							continue;
-						}
-
-						vx += x * (255 - (*world)[rx + x][rz + z].level) / 255.0f;
-						vz += z * (255 - (*world)[rx + x][rz + z].level) / 255.0f;
-					}
-				}
-
-				// Out-of-bound check
-				if ((int)(rx + vx * scale) < 0 || (int)(rx + vx * scale) > parameters.terrainScaleX - 1 ||
-					(int)(rz + vz * scale) < 0 || (int)(rz + vz * scale) > parameters.terrainScaleX - 1)
-				{
-					break;
-				}
-
-				/*if ((*world)[(int)rx][(int)rz].biome != 12)
-				{
-					int delta = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level - (*world)[(int)rx][(int)rz].level;
-					(*world)[(int)rx][(int)rz].level += delta;
-				}*/
-
-				int delta = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level - (*world)[(int)rx][(int)rz].level;
-				if (delta < 0 && (*world)[(int)rx][(int)rz].biome != 12)
-				{
-					uint8_t level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
-
-					for (int x = -2; x < 3; x++)
-					{
-						// Out-of-bound check
-						if (((int)rx + x) < 0 || ((int)rx + x) > parameters.terrainScaleX - 1)
-						{
-							continue;
-						}
-
-						for (int z = -2; z < 3; z++)
-						{
-							// Out-of-bound check
-							if (((int)rz + z) < 0 || ((int)rz + z) > parameters.terrainScaleX - 1)
-							{
-								continue;
-							}
-
-							(*world)[(int)rx + x][(int)rz + z].level = level;
-						}
-					}
-
-					// (*world)[(int)rx][(int)rz].level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
-					// (*world)[(int)rx][(int)rz].level += delta;
-				}
-				
-				// Take step, move with velocity.
-				rx += vx * scale; rz += vz * scale;
-			}
-		}
-
-
-#ifdef MULTI_THREADING
-		std::vector<std::thread> threads;
-
-		while (threads.size() < THREAD_LIMIT)
-		{
-			threads.emplace_back(Generate, world, contdensity, density, peakdensity,
-				parameters, static_cast<int>(threads.size()));
-		}
-
-		for (auto& thread : threads)
-		{
-			thread.join();
-		}
-#else
-		for (int thread = 0; thread < THREAD_LIMIT; thread++)
-		{
-			// Threads are not used here,
-			// they are faked so the function can be re-used.
-			Generate(world, contdensity, density, peakdensity, parameters, thread);
-		}
-#endif
 
 		auto end = std::chrono::system_clock::now();
 		auto elapsed = duration_cast
@@ -662,43 +460,5 @@ void Terrain::Shutdown()
 	fwrite(&cameraPosition, 1, sizeof(cameraPosition), f);
 	fclose(f);
 
-	SaveFrameBuffer("heightmap.png", world);
-
 	delete world;
-}
-
-void Terrain::SaveFrameBuffer(const char* path, Columns* world)
-{
-	std::vector<uint8_t> data;
-	uint8_t highest = 0, lowest = 255;
-
-	for (int x = 0; x < parameters.terrainScaleX; x++)
-	{
-		for (int z = 0; z < parameters.terrainScaleZ; z++)
-		{
-			uint8_t level = (*world)[x][z].level;
-			highest = max(highest, level);
-			lowest = min(lowest, level);
-		}
-	}
-
-	for (int x = 0; x < parameters.terrainScaleX; x++)
-	{
-		for (int z = 0; z < parameters.terrainScaleZ; z++)
-		{
-			uint8_t level = static_cast<uint8_t>((((*world)[x][z].level - lowest) /
-				static_cast<float>(highest)) * 255.0f);
-
-			data.push_back(level);
-			data.push_back(level);
-			data.push_back(level);
-
-			// data.push_back((*world)[x][z].level);
-			// data.push_back((*world)[x][z].level);
-			// data.push_back((*world)[x][z].level);
-		}
-	}
-
-	stbi_write_png(path, parameters.terrainScaleX, parameters.terrainScaleZ, 3,
-		data.data(), static_cast<size_t>(parameters.terrainScaleX * 3) * sizeof(char));
 }

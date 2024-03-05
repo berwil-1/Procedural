@@ -76,6 +76,7 @@ namespace Tmpl8
 		vector<CameraPoint> spline;
 
 		// Other data
+		bool ui = true;
 		int voxels = 0;
 		long long delay = 0;
 
