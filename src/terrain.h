@@ -22,7 +22,7 @@ namespace Tmpl8
 
 	struct Parameters
 	{
-		bool dirty = true, blend = true,
+		bool ui = true, dirty = true, blend = true,
 			waterFill = false, waterErosion = false,
 			caveInverted = false;
 

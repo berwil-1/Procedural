@@ -73,6 +73,10 @@ void Terrain::Init()
 void Terrain::HandleInput(float deltaTime)
 {
 #if 1
+	if (GetAsyncKeyState(VK_F1) & 1)
+	{
+		parameters.ui = !parameters.ui;
+	}
 	if (GetAsyncKeyState(VK_RBUTTON))
 	{
 		glfwSetInputMode(GetGlfwWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -150,6 +154,11 @@ void Terrain::HandleInput(float deltaTime)
 
 void Terrain::HandleInterface()
 {
+	if (!parameters.ui)
+	{
+		return;
+	}
+
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
@@ -569,8 +578,9 @@ next:
 				if (delta < 0 && (*world)[(int)rx][(int)rz].biome != 12)
 				{
 					uint8_t level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
+					(*world)[(int)rx][(int)rz].level = level;
 
-					for (int x = -2; x < 3; x++)
+					/*for (int x = -2; x < 3; x++)
 					{
 						// Out-of-bound check
 						if (((int)rx + x) < 0 || ((int)rx + x) > parameters.terrainScaleX - 1)
@@ -588,7 +598,7 @@ next:
 
 							(*world)[(int)rx + x][(int)rz + z].level = level;
 						}
-					}
+					}*/
 
 					// (*world)[(int)rx][(int)rz].level = (*world)[(int)(rx + vx * scale)][(int)(rz + vz * scale)].level;
 					// (*world)[(int)rx][(int)rz].level += delta;
