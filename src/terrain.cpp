@@ -407,22 +407,57 @@ void Terrain::Tick(float deltaTime)
 		{
 			for (int z = 0; z < parameters.terrainScaleZ; z++)
 			{
-
 				float fx = static_cast<float>(x), fz = static_cast<float>(z);
 				float cont = continentalness.noise.GetNoise(fx, fz);
 				float eros = erosion.noise.GetNoise(fx, fz);
 				float peak = peaks.noise.GetNoise(fx, fz);
-				float y = eros * (cont * 10.0f + peak) + 11.0f; // %253
+				uint8_t level = static_cast<uint8_t>(eros * (cont * 40.0f + peak * 10.0f) + 50.0f); // %253
 
+				(*world)[x][z] =
+				{
+					level,
+					0
+				};
+				
 				// Place voxel at xyz
-				Plot(x, y, z, clamp(LerpColors(0x111, 0xfff, y / 22.0f), 0x111, 0xfff));
-
+				/*while (y > 0)
+				{
+					Plot(x, y, z, clamp(LerpColors(0x111, 0xfff, y / 50.0f), 0x111, 0xfff));
+					y--;
+				}*/
 			}
 		}
 
-		auto end = std::chrono::system_clock::now();
+		for (int x = 0; x < parameters.terrainScaleX; x++)
+		{
+			for (int z = 0; z < parameters.terrainScaleZ; z++)
+			{
+				int y = (*world)[x][z].level;
+				int biome = (*world)[x][z].biome;
+
+				// Place voxel at xyz
+				while (y > 0)
+				{
+					//Plot(x, y, z, clamp(LerpColors(0x111, 0xfff, y / 100.0f), 0x111, 0xfff));
+
+					//if (biome > 0)
+					{
+						//Plot(x, y, z, LerpColors(0x15a, 0x1af, biome / 255.0f));
+					}
+					//else
+					{
+						Plot(x, y, z, clamp(LerpColors(0x111, 0xfff, y / 100.0f), 0x111, 0xfff));
+					}
+
+					y--;
+				}
+			}
+		}
+
+		using namespace std::chrono;
+		auto end = system_clock::now();
 		auto elapsed = duration_cast
-			<std::chrono::milliseconds>(end - start);
+			<milliseconds>(end - start);
 		delay = elapsed.count();
 		parameters.dirty = false;
 	}

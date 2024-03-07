@@ -24,7 +24,7 @@ namespace Tmpl8
 	{
 		bool dirty = true, blend = true,
 			waterFill = false, waterErosion = false,
-			caveInverted = false;
+			caveInverted = true;
 
 		int dimension = 1; // 0 = 2d, 1 = 3d
 		int presetIndex = 0, layerIndex = 0;
