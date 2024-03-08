@@ -53,10 +53,29 @@ namespace Tmpl8
 		void MouseScroll(float x, float y) { mouseScroll.x = x, mouseScroll.y = y; }
 		void KeyUp(int key) { /* implement if you want to handle keys */ }
 		void KeyDown(int key) { /* implement if you want to handle keys */ }
+		float3 Nlerp(const float3& start, const float3& end, float t) {
+			float3 result = start + (end - start) * t;
+			return normalize(result); // Ensure the result is normalized
+		}
+
+		// Catmull-Rom spline interpolation function for positions remains the same
+		float3 CatmullRomInterpolation(const float3& p0, const float3& p1, const float3& p2, const float3& p3, float t) {
+			float t2 = t * t;
+			float t3 = t2 * t;
+			return 0.5f * ((2.0f * p1) +
+				(-p0 + p2) * t +
+				(2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 +
+				(-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3);
+		}
 		float3 CatmullRom(const float3& p0, const float3& p1, const float3& p2, const float3& p3)
 		{
 			const float3 c = 2 * p0 - 5 * p1 + 4 * p2 - p3, d = 3 * (p1 - p2) + p3 - p0;
 			return 0.5f * (2 * p1 + ((p2 - p0) * splineLerp) + (c * splineLerp * splineLerp) + (d * splineLerp * splineLerp * splineLerp));
+		}
+		float3 LinearLerp(const float3& p1, const float3& p2, float splineLerp)
+		{
+			// Linearly interpolate between p1 and p2 based on splineLerp
+			return p1 + (p2 - p1) * splineLerp;
 		}
 
 		void SaveFrameBuffer(const char* path, Columns* world);

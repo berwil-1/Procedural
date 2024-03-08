@@ -49,7 +49,7 @@ void Terrain::Init()
 
 	// Load spline path
 	CameraPoint p;
-	FILE* fp = fopen("assets/splinepath.bin", "rb");
+	FILE* fp = fopen("spline.bin", "rb");
 	while (true)
 	{
 		fread(&p.cameraPosition, 1, sizeof(p.cameraPosition), fp);
@@ -72,11 +72,11 @@ void Terrain::Init()
 
 void Terrain::HandleInput(float deltaTime)
 {
-#if 1
 	if (GetAsyncKeyState(VK_F1) & 1)
 	{
 		parameters.ui = !parameters.ui;
 	}
+#if 0
 	if (GetAsyncKeyState(VK_RBUTTON))
 	{
 		glfwSetInputMode(GetGlfwWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -128,6 +128,7 @@ void Terrain::HandleInput(float deltaTime)
 		// Save a point for the spline
 		if (!pdown)
 		{
+			printf("Splinepoint added!\n");
 			if (!pf) pf = fopen("spline.bin", "wb");
 			fwrite(&cameraPosition, 1, sizeof(cameraPosition), pf);
 			float3 t = cameraPosition + cameraDirection;
@@ -143,9 +144,31 @@ void Terrain::HandleInput(float deltaTime)
 	const size_t N = spline.size();
 	CameraPoint p0 = spline[(splineIndex + (N - 1)) % N], p1 = spline[splineIndex];
 	CameraPoint p2 = spline[(splineIndex + 1) % N], p3 = spline[(splineIndex + 2) % N];
+
+	/*LookAt(LinearLerp(p0.cameraPosition, p1.cameraPosition, splineLerp), LinearLerp(p0.cameraDirection, p1.cameraDirection, splineLerp));
+	if ((splineLerp += (deltaTime / 1000.0f) * (15.0f / length(p0.cameraPosition - p1.cameraPosition))) > 1) splineLerp -= 1, splineIndex = (splineIndex + 1) % N;*/
+
+	LookAt(CatmullRom(p0.cameraPosition, p1.cameraPosition, p2.cameraPosition, p3.cameraPosition),
+		CatmullRom(p0.cameraDirection, p1.cameraDirection, p2.cameraDirection, p3.cameraDirection));
+	if ((splineLerp += (deltaTime / 2000.0f)) > 1) splineLerp -= 1, splineIndex = (splineIndex + 1) % N;
+
+	/*auto ApproxCatmullRom = [](const float3& p0, const float3& p1, const float3& p2, const float3& p3, const float t)
+	{
+		const float3 c = 2 * p0 - 5 * p1 + 4 * p2 - p3, d = 3 * (p1 - p2) + p3 - p0;
+		return 0.5f * (2 * p1 + ((p2 - p0) * t) + (c * t * t) + (d * t * t * t));
+	};
+
+	float approx = 0.0f;
+
+	for (float t = 0.001f; t < 1.0f; t += 0.001f)
+	{
+		approx += length(ApproxCatmullRom(p0.cameraPosition, p1.cameraPosition, p2.cameraPosition, p3.cameraPosition, t) -
+			ApproxCatmullRom(p0.cameraPosition, p1.cameraPosition, p2.cameraPosition, p3.cameraPosition, t - 0.001f));
+	}
+
 	LookAt(CatmullRom(p0.cameraPosition, p1.cameraPosition, p2.cameraPosition, p3.cameraPosition),
 		   CatmullRom(p0.cameraDirection, p1.cameraDirection, p2.cameraDirection, p3.cameraDirection));
-	if ((splineLerp += deltaTime * 0.0005f) > 1) splineLerp -= 1, splineIndex = (splineIndex + 1) % N;
+	if ((splineLerp += ((deltaTime / 1000.0f) * (5.0f / approx))) > 1) splineLerp -= 1, splineIndex = (splineIndex + 1) % N;*/
 #endif
 
 	mouseDelta = { 0, 0 };
