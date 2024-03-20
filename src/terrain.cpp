@@ -33,7 +33,7 @@ void Terrain::Init()
 		fclose(f);
 	}
 
-	f = fopen("layers.dat", "rb");
+	f = fopen("layer.dat", "rb");
 	if (f)
 	{
 		fread(&continentalness, 1, sizeof(continentalness), f);
@@ -176,77 +176,96 @@ void Terrain::HandleInterface()
 
 	std::vector<const char*> items =
 	{
-		"None", "Grassland", "Desert", "Ocean"
+		"Default", "Grassland", "Desert", "Ocean"
 	};
 
-	parameters.dirty |= ImGui::Combo("Preset",
+	if (parameters.dirty |= ImGui::Combo("Preset",
 		&parameters.presetIndex, items.data(),
-			static_cast<int>(items.size()));
-	switch (parameters.presetIndex)
+		static_cast<int>(items.size())))
 	{
-		FILE* f;
-
-		case 1:
+		switch (parameters.presetIndex)
 		{
-			f = fopen("layer_grassland.dat", "rb");
+			FILE* f;
 
-			if (f)
+			case 0:
 			{
-				fread(&continentalness, 1, sizeof(continentalness), f);
-				fread(&erosion, 1, sizeof(erosion), f);
-				fread(&peaks, 1, sizeof(peaks), f);
-				fread(&temperature, 1, sizeof(temperature), f);
-				fread(&humidity, 1, sizeof(humidity), f);
-				fread(&contdensity, 1, sizeof(contdensity), f);
-				fread(&density, 1, sizeof(density), f);
-				fread(&peakdensity, 1, sizeof(peakdensity), f);
-				fclose(f);
+				f = fopen("layer_default.dat", "rb");
+
+				if (f)
+				{
+					fread(&continentalness, 1, sizeof(continentalness), f);
+					fread(&erosion, 1, sizeof(erosion), f);
+					fread(&peaks, 1, sizeof(peaks), f);
+					fread(&temperature, 1, sizeof(temperature), f);
+					fread(&humidity, 1, sizeof(humidity), f);
+					fread(&contdensity, 1, sizeof(contdensity), f);
+					fread(&density, 1, sizeof(density), f);
+					fread(&peakdensity, 1, sizeof(peakdensity), f);
+					fclose(f);
+				}
+
+				break;
 			}
 
-			parameters.dirty = true;
-			break;
-		}
-
-		case 2:
-		{
-			f = fopen("layer_desert.dat", "rb");
-
-			if (f)
+			case 1:
 			{
-				fread(&continentalness, 1, sizeof(continentalness), f);
-				fread(&erosion, 1, sizeof(erosion), f);
-				fread(&peaks, 1, sizeof(peaks), f);
-				fread(&temperature, 1, sizeof(temperature), f);
-				fread(&humidity, 1, sizeof(humidity), f);
-				fread(&contdensity, 1, sizeof(contdensity), f);
-				fread(&density, 1, sizeof(density), f);
-				fread(&peakdensity, 1, sizeof(peakdensity), f);
-				fclose(f);
+				f = fopen("layer_grassland.dat", "rb");
+
+				if (f)
+				{
+					fread(&continentalness, 1, sizeof(continentalness), f);
+					fread(&erosion, 1, sizeof(erosion), f);
+					fread(&peaks, 1, sizeof(peaks), f);
+					fread(&temperature, 1, sizeof(temperature), f);
+					fread(&humidity, 1, sizeof(humidity), f);
+					fread(&contdensity, 1, sizeof(contdensity), f);
+					fread(&density, 1, sizeof(density), f);
+					fread(&peakdensity, 1, sizeof(peakdensity), f);
+					fclose(f);
+				}
+
+				break;
 			}
 
-			parameters.dirty = true;
-			break;
-		}
-
-		case 3:
-		{
-			f = fopen("layer_ocean.dat", "rb");
-
-			if (f)
+			case 2:
 			{
-				fread(&continentalness, 1, sizeof(continentalness), f);
-				fread(&erosion, 1, sizeof(erosion), f);
-				fread(&peaks, 1, sizeof(peaks), f);
-				fread(&temperature, 1, sizeof(temperature), f);
-				fread(&humidity, 1, sizeof(humidity), f);
-				fread(&contdensity, 1, sizeof(contdensity), f);
-				fread(&density, 1, sizeof(density), f);
-				fread(&peakdensity, 1, sizeof(peakdensity), f);
-				fclose(f);
+				f = fopen("layer_desert.dat", "rb");
+
+				if (f)
+				{
+					fread(&continentalness, 1, sizeof(continentalness), f);
+					fread(&erosion, 1, sizeof(erosion), f);
+					fread(&peaks, 1, sizeof(peaks), f);
+					fread(&temperature, 1, sizeof(temperature), f);
+					fread(&humidity, 1, sizeof(humidity), f);
+					fread(&contdensity, 1, sizeof(contdensity), f);
+					fread(&density, 1, sizeof(density), f);
+					fread(&peakdensity, 1, sizeof(peakdensity), f);
+					fclose(f);
+				}
+
+				break;
 			}
 
-			parameters.dirty = true;
-			break;
+			case 3:
+			{
+				f = fopen("layer_ocean.dat", "rb");
+
+				if (f)
+				{
+					fread(&continentalness, 1, sizeof(continentalness), f);
+					fread(&erosion, 1, sizeof(erosion), f);
+					fread(&peaks, 1, sizeof(peaks), f);
+					fread(&temperature, 1, sizeof(temperature), f);
+					fread(&humidity, 1, sizeof(humidity), f);
+					fread(&contdensity, 1, sizeof(contdensity), f);
+					fread(&density, 1, sizeof(density), f);
+					fread(&peakdensity, 1, sizeof(peakdensity), f);
+					fclose(f);
+				}
+
+				break;
+			}
 		}
 	}
 
@@ -656,7 +675,7 @@ void Terrain::Shutdown()
 {
 	FILE* f;
 
-	f = fopen("layers.dat", "wb");
+	f = fopen("layer.dat", "wb");
 	fwrite(&continentalness, 1, sizeof(continentalness), f);
 	fwrite(&erosion, 1, sizeof(erosion), f);
 	fwrite(&peaks, 1, sizeof(peaks), f);
