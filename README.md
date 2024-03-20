@@ -6,9 +6,11 @@ the procedural terrain generator is written by me [William Bergh](https://github
 ### How to install
 1. Download the source code, this can be done by clicking the green "Code" button on the top right of the page. You can also download it directly [here](https://github.com/CoolJWB/Procedural/archive/refs/heads/main.zip).
 2. Unzip the compressed .zip, all files will exist within one folder so no need to create a new one for it.
-3. Open the .sln file with Visual Studio 2022 or newer.
+3. Open the .sln file with Visual Studio.
+4. Right click the project Terrain and select "Set as Startup Project".
+5. Press the green play button at the top of Visual Studio, run with Local Windows Debugger.
 
-### Resources
-1. https://odr.chalmers.se/bitstream/20.500.12380/244588/1/244588.pdf
-2. https://www.youtube.com/watch?v=ob3VwY4JyzE
-3. http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/
+### Requirements
+1. Windows
+2. Microsoft Visual Studio 2022 or newer.
+3. MSVC, however, most compilers should work.
